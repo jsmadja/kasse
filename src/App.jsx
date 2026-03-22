@@ -687,10 +687,6 @@ export default function App() {
                 <Field label="Repas" T={T}><Input value={budgetRepasHotelJour} onChange={e => setBudgetRepasHotelJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
               </div>
               <SubGroup label="Location" color="purple" T={T} />
-              <a href="https://www.seloger.com/classified-search?distributionTypes=Rent&energyCertificate=A,B,C,D&estateTypes=Apartment&locations=eyJwbGFjZUlkcyI6WyJTVFJURlIxNDMwIl0sImR1cmF0aW9uIjoiMzAiLCJtb2RlIjoiVHJhbnNpdCJ9&numberOfRoomsMax=2&priceMax=1000&projectTypes=Stock&spaceMin=15&order=PricePerSquareMeterDesc" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 text-[11px] font-medium mb-3 text-purple-400 hover:text-purple-300 transition-colors`}>
-                <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                Voir les annonces SeLoger correspondantes
-              </a>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Loyer" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
                 <Field label="Repas" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
@@ -720,6 +716,10 @@ export default function App() {
                 <Field label="Travaux à l'achat" T={T}><Input value={travauxAchat} onChange={e => setTravauxAchat(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
               <SubGroup label="Mise en location" color="teal" T={T} />
+              <a href="https://www.seloger.com/classified-search?distributionTypes=Rent&energyCertificate=A,B,C,D&estateTypes=Apartment&locations=eyJwbGFjZUlkcyI6WyJTVFJURlIxNDMwIl0sImR1cmF0aW9uIjoiMzAiLCJtb2RlIjoiVHJhbnNpdCJ9&numberOfRoomsMax=2&priceMax=1000&projectTypes=Stock&spaceMin=15&order=PricePerSquareMeterDesc" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 text-[11px] font-medium mb-3 text-teal-400 hover:text-teal-300 transition-colors`}>
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                Voir les annonces SeLoger correspondantes
+              </a>
               <p className={`text-[10px] -mt-2 ${T.textFaint}`}>
                 {dureeDetentionAnnees === 0
                   ? `Location indéfinie après la fin de pendularité (${dureeAnnees} ans) — pas de revente prévue, on simule ${Math.max(0, 40 - dureeAnnees)} ans de location (jusqu'au décès dans 40 ans).`
@@ -1461,7 +1461,7 @@ export default function App() {
                     ...(retraiteVisible && dureeLocRetr > 0 ? [{
                       label: 'Phase 3', sublabel: `Retraite · ${dureeLocRetr} an${dureeLocRetr > 1 ? 's' : ''}`,
                       pct: scale(dureeLocRetr),
-                      color: T.isDark ? 'bg-amber-700/80' : 'bg-amber-400',
+                      color: T.isDark ? 'bg-amber-500' : 'bg-amber-400',
                       textColor: 'text-white',
                     }] : []),
                     // Phase finale : Revente (fixe 6%) ou Succession (fixe 36px)

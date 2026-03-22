@@ -43,15 +43,29 @@ function Select({ value, onChange, options, T }) {
   );
 }
 
-function Input({ value, onChange, step, T }) {
+function Input({ value, onChange, step, suffix, T }) {
+  if (!suffix) {
+    return (
+      <input
+        type="number"
+        step={step}
+        value={value}
+        onChange={onChange}
+        className={`w-full px-3 py-2 rounded-lg border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition ${T.input}`}
+      />
+    );
+  }
   return (
-    <input
-      type="number"
-      step={step}
-      value={value}
-      onChange={onChange}
-      className={`w-full px-3 py-2 rounded-lg border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition ${T.input}`}
-    />
+    <div className={`flex items-center rounded-lg border text-sm font-medium overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition ${T.input}`}>
+      <input
+        type="number"
+        step={step}
+        value={value}
+        onChange={onChange}
+        className="flex-1 min-w-0 px-3 py-2 bg-transparent focus:outline-none"
+      />
+      <span className={`px-2 py-2 text-xs font-bold select-none ${T.textFaint}`}>{suffix}</span>
+    </div>
   );
 }
 
@@ -225,13 +239,27 @@ export default function App() {
   const [passLocalMensuel, setPassLocalMensuel] = useLocalStorage('passLocalMensuel', 86);
   const [budgetRepasHotelJour, setBudgetRepasHotelJour] = useLocalStorage('budgetRepasHotelJour', 5);
   const [budgetRepasAppartJour, setBudgetRepasAppartJour] = useLocalStorage('budgetRepasAppartJour', 5);
-  const [taxeHabitationAnnuelle, setTaxeHabitationAnnuelle] = useLocalStorage('taxeHabitationAnnuelle', 500);
-  const [chargesAnnexesMensuelles, setChargesAnnexesMensuelles] = useLocalStorage('chargesAnnexesMensuelles', 100);
+  const [taxeHabitationLocationAnnuelle, setTaxeHabitationLocationAnnuelle] = useLocalStorage('taxeHabitationLocationAnnuelle', 500);
+  const [taxeHabitationAchatAnnuelle, setTaxeHabitationAchatAnnuelle] = useLocalStorage('taxeHabitationAchatAnnuelle', 500);
+  const [chargesAnnexesLocationMensuelles, setChargesAnnexesLocationMensuelles] = useLocalStorage('chargesAnnexesLocationMensuelles', 100);
+  const [chargesAnnexesAchatMensuelles, setChargesAnnexesAchatMensuelles] = useLocalStorage('chargesAnnexesAchatMensuelles', 100);
 
   // Paramètres Économiques
   const [inflationAnnuelle, setInflationAnnuelle] = useLocalStorage('inflationAnnuelle', 2);
   const [plusValueAnnuelle, setPlusValueAnnuelle] = useLocalStorage('plusValueAnnuelle', 1);
   const [fraisInstallation, setFraisInstallation] = useLocalStorage('fraisInstallation', 3000);
+  const [fraisAgenceRevente, setFraisAgenceRevente] = useLocalStorage('fraisAgenceRevente', 5);
+  const [fraisDiagnostics, setFraisDiagnostics] = useLocalStorage('fraisDiagnostics', 1000);
+  const [travauxAchat, setTravauxAchat] = useLocalStorage('travauxAchat', 0);
+  const [travauxRevente, setTravauxRevente] = useLocalStorage('travauxRevente', 0);
+  const [dureeDetentionAnnees, setDureeDetentionAnnees] = useLocalStorage('dureeDetentionAnnees', 20);
+
+  // Paramètres Location après pendularité
+  const [loyerPercuMensuel, setLoyerPercuMensuel] = useLocalStorage('loyerPercuMensuel', 700);
+  const [assurancePNOMensuelle, setAssurancePNOMensuelle] = useLocalStorage('assurancePNOMensuelle', 20);
+  const [fraisGestionLocative, setFraisGestionLocative] = useLocalStorage('fraisGestionLocative', 8);
+  const [vacanceLocative, setVacanceLocative] = useLocalStorage('vacanceLocative', 5);
+  const [tmi, setTmi] = useLocalStorage('tmi', 30);
 
   const calculerTotalInflate = (montantAnnuel, annees, taux) => {
     let total = 0;
@@ -249,8 +277,10 @@ export default function App() {
     const inf = inflationAnnuelle;
 
     const coutNavigoTotal = calculerTotalInflate(passLocalMensuel * 12, dureeAnnees, inf);
-    const chargesVieTotale = calculerTotalInflate(chargesAnnexesMensuelles * 12, dureeAnnees, inf);
-    const taxesTotales = calculerTotalInflate(taxeHabitationAnnuelle, dureeAnnees, inf);
+    const chargesVieTotaleLocation = calculerTotalInflate(chargesAnnexesLocationMensuelles * 12, dureeAnnees, inf);
+    const chargesVieTotaleAchat = calculerTotalInflate(chargesAnnexesAchatMensuelles * 12, dureeAnnees, inf);
+    const taxesTotalesLocation = calculerTotalInflate(taxeHabitationLocationAnnuelle, dureeAnnees, inf);
+    const taxesTotalesAchat = calculerTotalInflate(taxeHabitationAchatAnnuelle, dureeAnnees, inf);
 
     const coutTgvQuotidien = calculerTotalInflate(abonnementTgvMensuel * 12, dureeAnnees, inf);
     const arParSemaine = joursParSemaine - nuitsParSemaine;
@@ -281,23 +311,98 @@ export default function App() {
 
     const mensuPart = totalMensualites * ratioAchat;
     const chargesProprioPart = totalChargesProprio * ratioAchat;
-    const chargesViePart = chargesVieTotale * ratioAchat;
-    const taxesPart = taxesTotales * ratioAchat;
+    const chargesViePart = chargesVieTotaleAchat * ratioAchat;
+    const taxesPart = taxesTotalesAchat * ratioAchat;
     const installationPart = fraisInstallation * ratioAchat;
+    const travauxAchatPart = travauxAchat * ratioAchat;
     const apportPart = apport * ratioAchat;
     const notairePart = fraisNotaireTotal * ratioAchat;
 
-    const prixReventeFinal = prixAchat * Math.pow(1 + plusValueAnnuelle / 100, dureeAnnees);
-    const capitalRecuperePart = (prixReventeFinal - capitalRestantDu) * ratioAchat;
+    const prixReventeFinal = prixAchat * Math.pow(1 + plusValueAnnuelle / 100, dureeDetentionAnnees);
+
+    // Frais de revente
+    const fraisAgenceMontant = prixReventeFinal * (fraisAgenceRevente / 100);
+
+    // Capital restant dû au moment de la revente (basé sur dureeDetentionAnnees)
+    const moisDetention = dureeDetentionAnnees * 12;
+    const capitalRestantDuRevente = montantEmprunte * (Math.pow(1 + rMensuel, nTotalMois) - Math.pow(1 + rMensuel, Math.min(moisDetention, nTotalMois))) / (Math.pow(1 + rMensuel, nTotalMois) - 1);
+
+    // Impôt sur plus-value résidence secondaire
+    const plusValueBrute = Math.max(0, prixReventeFinal - prixAchat - fraisNotaireTotal);
+    // Abattement IR : 0% années 1-5, 6%/an années 6-21, 4% année 22, exo à partir 22 ans
+    const abattementIR = (() => {
+      if (dureeDetentionAnnees >= 22) return 1;
+      if (dureeDetentionAnnees <= 5) return 0;
+      const annees6a21 = Math.min(dureeDetentionAnnees, 21) - 5;
+      const annee22 = dureeDetentionAnnees === 22 ? 1 : 0;
+      return Math.min(annees6a21 * 0.06 + annee22 * 0.04, 1);
+    })();
+    // Abattement PS : 0% années 1-5, 1,65%/an années 6-21, 1,60% année 22, 9%/an années 23-30, exo 30 ans
+    const abattementPS = (() => {
+      if (dureeDetentionAnnees >= 30) return 1;
+      if (dureeDetentionAnnees <= 5) return 0;
+      const annees6a21 = Math.min(dureeDetentionAnnees, 21) - 5;
+      const annee22 = dureeDetentionAnnees >= 22 ? 1 : 0;
+      const annees23a30 = dureeDetentionAnnees >= 23 ? Math.min(dureeDetentionAnnees, 30) - 22 : 0;
+      return Math.min(annees6a21 * 0.0165 + annee22 * 0.016 + annees23a30 * 0.09, 1);
+    })();
+    const plusValueImposableIR = plusValueBrute * (1 - abattementIR);
+    const plusValueImposablePS = plusValueBrute * (1 - abattementPS);
+    const impotPlusValue = plusValueImposableIR * 0.19 + plusValueImposablePS * 0.172;
+
+    const fraisReventeTotal = (fraisAgenceMontant + impotPlusValue + fraisDiagnostics + travauxRevente) * ratioAchat;
+
+    // Revenus locatifs sur la période entre fin de pendularité et revente
+    const dureeLocationAnnees = Math.max(0, dureeDetentionAnnees - dureeAnnees);
+    // Loyer brut annuel avec taux d'occupation et inflation, à partir de l'année dureeAnnees
+    let revenusBrutsTotal = 0;
+    let assurancePNOTotal = 0;
+    let loyerCourant = loyerPercuMensuel * 12 * Math.pow(1 + inf / 100, dureeAnnees); // loyer indexé au début de la mise en location
+    let pnoCourant = assurancePNOMensuelle * 12 * Math.pow(1 + inf / 100, dureeAnnees);
+    for (let i = 0; i < dureeLocationAnnees; i++) {
+      revenusBrutsTotal += loyerCourant * (1 - vacanceLocative / 100);
+      assurancePNOTotal += pnoCourant;
+      loyerCourant *= (1 + inf / 100);
+      pnoCourant *= (1 + inf / 100);
+    }
+    // Frais gestion locative
+    const fraisGestionTotal = revenusBrutsTotal * (fraisGestionLocative / 100);
+    // Revenus nets avant impôt (loyers bruts - frais gestion - PNO)
+    const revenusNetsAvantImpot = revenusBrutsTotal - fraisGestionTotal - assurancePNOTotal;
+    // Micro-foncier : abattement 30%, puis TMI + 17,2% PS sur 70%
+    const revenusImposables = revenusNetsAvantImpot * 0.70;
+    const impotRevenusLocatifs = revenusImposables * ((tmi + 17.2) / 100);
+    // Revenus nets après impôt (part propriétaire)
+    const revenusLocatifsNets = (revenusNetsAvantImpot - impotRevenusLocatifs) * ratioAchat;
+
+    const capitalRecuperePart = (prixReventeFinal - capitalRestantDuRevente - fraisAgenceMontant - impotPlusValue - fraisDiagnostics - travauxRevente) * ratioAchat;
 
     const createScenario = (id, title, icon, color, transportAbonnement, transportBillets, transportNavigo, base, chargesP, chargesV, tax, inst, food, notaire, app, desc, trajets, available = true) => {
       const transport = transportAbonnement + transportBillets + transportNavigo;
       const tresorerie = transport + base + chargesP + chargesV + tax + inst + food + notaire + app;
-      const coutNet = tresorerie - (id === 'achat' ? capitalRecuperePart : 0);
+      const coutNet = tresorerie
+        - (id === 'achat' ? capitalRecuperePart : 0)
+        - (id === 'achat' ? revenusLocatifsNets : 0);
       return {
         id, title, icon, color, transport, transportAbonnement, transportBillets, transportNavigo,
         base, chargesP, chargesV, tax, inst, food, notaire, app,
         tresorerie, recuperation: id === 'achat' ? capitalRecuperePart : 0,
+        prixRevente: id === 'achat' ? prixReventeFinal : 0,
+        fraisRevente: id === 'achat' ? fraisReventeTotal : 0,
+        fraisAgence: id === 'achat' ? fraisAgenceMontant * ratioAchat : 0,
+        impotPlusValue: id === 'achat' ? impotPlusValue * ratioAchat : 0,
+        diagnostics: id === 'achat' ? fraisDiagnostics * ratioAchat : 0,
+        travauxRevente: id === 'achat' ? travauxRevente * ratioAchat : 0,
+        travauxAchat: id === 'achat' ? travauxAchatPart : 0,
+        abattementIR: id === 'achat' ? abattementIR : 0,
+        abattementPS: id === 'achat' ? abattementPS : 0,
+        plusValueBrute: id === 'achat' ? plusValueBrute : 0,
+        // Revenus locatifs (scénario achat uniquement)
+        revenusLocatifsNets: id === 'achat' ? revenusLocatifsNets : 0,
+        revenusBrutsTotal: id === 'achat' ? revenusBrutsTotal * ratioAchat : 0,
+        fraisGestionTotal: id === 'achat' ? fraisGestionTotal * ratioAchat : 0,
+        assurancePNOTotal: id === 'achat' ? assurancePNOTotal * ratioAchat : 0,
+        impotRevenusLocatifs: id === 'achat' ? impotRevenusLocatifs * ratioAchat : 0,
         coutNet, trajetsParAn: trajets, desc, available
       };
     };
@@ -306,15 +411,16 @@ export default function App() {
       createScenario('tgv',         'TGV Quotidien (MAX ACTIF)',    <Train className="w-4 h-4" />, 'sky',     coutTgvQuotidien,              0,                                                            coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, "Abonnement illimité (max 250 trajets).", trajetsParAnTgv),
       createScenario('tgv-liberte', 'TGV Quotidien (Carte Liberté)',<Train className="w-4 h-4" />, 'teal',    coutCarteLiberteAbonnement,    calculerTotalInflate(coutCarteLiberteTrajetParAn, dureeAnnees, inf), coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, `Abo. ${abonnementCarteLiberteAnnuel}€/an + ${prixBilletCarteLiberte}€/trajet.`, trajetsParAnTgv),
       createScenario('hotel',       'Hôtel',                        <Bed className="w-4 h-4" />,   'orange',  coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutHotelTotal, 0, 0, 0, 0, repasHotelTotal, 0, 0, "A/R hebdo + Hôtel.", trajetsParAnHebdo, nuitsParSemaine > 0),
-      createScenario('location',    'Location',                     <Building className="w-4 h-4" />,'purple', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutLocationTotal, 0, chargesVieTotale, taxesTotales, fraisInstallation, repasAppartTotal, 0, 0, "Loyer + A/R hebdo.", trajetsParAnHebdo, nuitsParSemaine > 0),
-      createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, installationPart, repasAppartTotal, notairePart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo, nuitsParSemaine > 0),
+      createScenario('location',    'Location',                     <Building className="w-4 h-4" />,'purple', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutLocationTotal, 0, chargesVieTotaleLocation, taxesTotalesLocation, fraisInstallation, repasAppartTotal, 0, 0, "Loyer + A/R hebdo.", trajetsParAnHebdo, nuitsParSemaine > 0),
+      createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, installationPart, repasAppartTotal, notairePart + travauxAchatPart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo, nuitsParSemaine > 0),
     ];
   }, [
     dureeAnnees, joursParSemaine, semainesParAn, nuitsParSemaine,
     abonnementTgvMensuel, abonnementCarteLiberteAnnuel, prixBilletCarteLiberte, prixNuitHotel, loyerMensuel,
     prixAchat, partAchat, apport, fraisNotairePourcent, tauxEmprunt, dureeEmpruntAnnees, chargesAnnuellesAchat,
-    passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationAnnuelle, chargesAnnexesMensuelles,
-    inflationAnnuelle, plusValueAnnuelle, fraisInstallation
+    passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationLocationAnnuelle, taxeHabitationAchatAnnuelle, chargesAnnexesLocationMensuelles, chargesAnnexesAchatMensuelles,
+    inflationAnnuelle, plusValueAnnuelle, fraisInstallation, fraisAgenceRevente, fraisDiagnostics, travauxAchat, travauxRevente, dureeDetentionAnnees,
+    loyerPercuMensuel, assurancePNOMensuelle, fraisGestionLocative, vacanceLocative, tmi
   ]);
 
   const arParSemaineCalc = joursParSemaine - nuitsParSemaine;
@@ -436,48 +542,77 @@ export default function App() {
             </SectionCard>
 
             <SectionCard title="Transport" icon={<Train className="w-3.5 h-3.5" />} accent="sky" storageKey="sectionTransport" T={T}>
-              <Field label="Navigo (€ / mois)" T={T}><Input value={passLocalMensuel} onChange={e => setPassLocalMensuel(Number(e.target.value))} T={T} /></Field>
+              <Field label="Navigo" T={T}><Input value={passLocalMensuel} onChange={e => setPassLocalMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
               <SubGroup label="TGV MAX ACTIF" color="sky" T={T} />
-              <Field label="Abonnement (€ / mois)" T={T}><Input value={abonnementTgvMensuel} onChange={e => setAbonnementTgvMensuel(Number(e.target.value))} T={T} /></Field>
+              <Field label="Abonnement" T={T}><Input value={abonnementTgvMensuel} onChange={e => setAbonnementTgvMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
               <SubGroup label="Carte Liberté" color="teal" T={T} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Abonnement (€ / an)" T={T}><Input value={abonnementCarteLiberteAnnuel} onChange={e => setAbonnementCarteLiberteAnnuel(Number(e.target.value))} T={T} /></Field>
-                <Field label="Billet (€ / trajet)" T={T}><Input value={prixBilletCarteLiberte} onChange={e => setPrixBilletCarteLiberte(Number(e.target.value))} T={T} /></Field>
+                <Field label="Abonnement" T={T}><Input value={abonnementCarteLiberteAnnuel} onChange={e => setAbonnementCarteLiberteAnnuel(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Billet" T={T}><Input value={prixBilletCarteLiberte} onChange={e => setPrixBilletCarteLiberte(Number(e.target.value))} suffix="€/trajet" T={T} /></Field>
               </div>
             </SectionCard>
 
             <SectionCard title="Hébergement & Vie" icon={<Utensils className="w-3.5 h-3.5" />} accent="orange" storageKey="sectionHebergement" T={T}>
               <SubGroup label="Hôtel" color="orange" T={T} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nuit (€ / j)" T={T}><Input value={prixNuitHotel} onChange={e => setPrixNuitHotel(Number(e.target.value))} T={T} /></Field>
-                <Field label="Repas (€ / j)" T={T}><Input value={budgetRepasHotelJour} onChange={e => setBudgetRepasHotelJour(Number(e.target.value))} T={T} /></Field>
+                <Field label="Nuit" T={T}><Input value={prixNuitHotel} onChange={e => setPrixNuitHotel(Number(e.target.value))} suffix="€/j" T={T} /></Field>
+                <Field label="Repas" T={T}><Input value={budgetRepasHotelJour} onChange={e => setBudgetRepasHotelJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
               </div>
               <SubGroup label="Location" color="purple" T={T} />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Loyer (€ / mois)" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} T={T} /></Field>
-                <Field label="Repas (€ / j)" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} T={T} /></Field>
-                <Field label="Élec / Web / Assur (€/mois)" T={T}><Input value={chargesAnnexesMensuelles} onChange={e => setChargesAnnexesMensuelles(Number(e.target.value))} T={T} /></Field>
-                <Field label="Taxe Hab / Fonc (€/an)" T={T}><Input value={taxeHabitationAnnuelle} onChange={e => setTaxeHabitationAnnuelle(Number(e.target.value))} T={T} /></Field>
-                <Field label="Frais installation (€)" T={T}><Input value={fraisInstallation} onChange={e => setFraisInstallation(Number(e.target.value))} T={T} /></Field>
+                <Field label="Loyer" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Repas" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
+                <Field label="Élec / Web / Assur" T={T}><Input value={chargesAnnexesLocationMensuelles} onChange={e => setChargesAnnexesLocationMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Taxe Hab / Fonc" T={T}><Input value={taxeHabitationLocationAnnuelle} onChange={e => setTaxeHabitationLocationAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Frais installation" T={T}><Input value={fraisInstallation} onChange={e => setFraisInstallation(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
             </SectionCard>
 
             <SectionCard title="Achat" icon={<ShieldCheck className="w-3.5 h-3.5" />} accent="emerald" storageKey="sectionAchat" T={T}>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Prix (€)" T={T}><Input value={prixAchat} onChange={e => setPrixAchat(Number(e.target.value))} T={T} /></Field>
-                <Field label="Votre part (%)" T={T}><Input value={partAchat} onChange={e => setPartAchat(Number(e.target.value))} T={T} /></Field>
-                <Field label="Apport total (€)" T={T}><Input value={apport} onChange={e => setApport(Number(e.target.value))} T={T} /></Field>
-                <Field label="Frais notaire (%)" T={T}><Input value={fraisNotairePourcent} onChange={e => setFraisNotairePourcent(Number(e.target.value))} T={T} /></Field>
-                <Field label="Taux prêt (%)" T={T}><Input step="0.1" value={tauxEmprunt} onChange={e => setTauxEmprunt(Number(e.target.value))} T={T} /></Field>
-                <Field label="Durée prêt (ans)" T={T}><Input value={dureeEmpruntAnnees} onChange={e => setDureeEmpruntAnnees(Number(e.target.value))} T={T} /></Field>
-                <Field label="Charges co-pro (€/an)" T={T}><Input value={chargesAnnuellesAchat} onChange={e => setChargesAnnuellesAchat(Number(e.target.value))} T={T} /></Field>
+                <Field label="Prix" T={T}><Input value={prixAchat} onChange={e => setPrixAchat(Number(e.target.value))} suffix="€" T={T} /></Field>
+                <Field label="Votre part" T={T}><Input value={partAchat} onChange={e => setPartAchat(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Apport total" T={T}><Input value={apport} onChange={e => setApport(Number(e.target.value))} suffix="€" T={T} /></Field>
+                <Field label="Frais notaire" T={T}><Input value={fraisNotairePourcent} onChange={e => setFraisNotairePourcent(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Taux prêt" T={T}><Input step="0.1" value={tauxEmprunt} onChange={e => setTauxEmprunt(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Durée prêt" T={T}>
+                  <Select value={dureeEmpruntAnnees} onChange={e => setDureeEmpruntAnnees(Number(e.target.value))} options={[5,7,10,12,15,20,25,30].map(v => ({ value: v, label: `${v} ans` }))} T={T} />
+                </Field>
+                <Field label="Charges co-pro" T={T}><Input value={chargesAnnuellesAchat} onChange={e => setChargesAnnuellesAchat(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Élec / Web / Assur" T={T}><Input value={chargesAnnexesAchatMensuelles} onChange={e => setChargesAnnexesAchatMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Taxe Hab / Fonc" T={T}><Input value={taxeHabitationAchatAnnuelle} onChange={e => setTaxeHabitationAchatAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Travaux à l'achat" T={T}><Input value={travauxAchat} onChange={e => setTravauxAchat(Number(e.target.value))} suffix="€" T={T} /></Field>
+              </div>
+              <SubGroup label="Mise en location" color="teal" T={T} />
+              <p className={`text-[10px] -mt-2 ${T.textFaint}`}>
+                {dureeDetentionAnnees > dureeAnnees
+                  ? `Entre la fin de pendularité (${dureeAnnees} ans) et la revente (${dureeDetentionAnnees} ans) — ${dureeDetentionAnnees - dureeAnnees} an${dureeDetentionAnnees - dureeAnnees > 1 ? 's' : ''} de location.`
+                  : `Aucune période de location (revente ≤ fin de pendularité).`}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Loyer perçu" T={T}><Input value={loyerPercuMensuel} onChange={e => setLoyerPercuMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Assurance PNO" T={T}><Input value={assurancePNOMensuelle} onChange={e => setAssurancePNOMensuelle(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Frais gestion" T={T}><Input step="0.5" value={fraisGestionLocative} onChange={e => setFraisGestionLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Vacance locative" T={T}><Input step="1" value={vacanceLocative} onChange={e => setVacanceLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="TMI" T={T}>
+                  <Select value={tmi} onChange={e => setTmi(Number(e.target.value))} options={[0, 11, 30, 41, 45].map(v => ({ value: v, label: `${v} %` }))} T={T} />
+                </Field>
+              </div>
+              <SubGroup label="Revente" color="emerald" T={T} />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Revente dans" T={T}>
+                  <Select value={dureeDetentionAnnees} onChange={e => setDureeDetentionAnnees(Number(e.target.value))} options={[5,8,10,12,15,18,20,22,25,30].map(v => ({ value: v, label: `${v} ans` }))} T={T} />
+                </Field>
+                <Field label="Plus-value / an" T={T}><Input step="0.1" value={plusValueAnnuelle} onChange={e => setPlusValueAnnuelle(Number(e.target.value))} suffix="%/an" T={T} /></Field>
+                <Field label="Frais agence" T={T}><Input step="0.5" value={fraisAgenceRevente} onChange={e => setFraisAgenceRevente(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Diagnostics" T={T}><Input value={fraisDiagnostics} onChange={e => setFraisDiagnostics(Number(e.target.value))} suffix="€" T={T} /></Field>
+                <Field label="Travaux avant revente" T={T}><Input value={travauxRevente} onChange={e => setTravauxRevente(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
             </SectionCard>
 
             <SectionCard title="Économie" icon={<TrendingUp className="w-3.5 h-3.5" />} accent="amber" storageKey="sectionEconomie" T={T}>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Inflation / an (%)" T={T}><Input step="0.1" value={inflationAnnuelle} onChange={e => setInflationAnnuelle(Number(e.target.value))} T={T} /></Field>
-                <Field label="Plus-value immo (%)" T={T}><Input step="0.1" value={plusValueAnnuelle} onChange={e => setPlusValueAnnuelle(Number(e.target.value))} T={T} /></Field>
+                <Field label="Inflation" T={T}><Input step="0.1" value={inflationAnnuelle} onChange={e => setInflationAnnuelle(Number(e.target.value))} suffix="%/an" T={T} /></Field>
               </div>
             </SectionCard>
 
@@ -574,7 +709,7 @@ export default function App() {
                       </div>
                       {s.id === 'achat' && (
                         <p className={`text-[10px] mt-1 text-right ${T.capitalText}`}>
-                          Capital récupéré à la revente : {formatEuro(s.recuperation)} (zone hachurée)
+                          Revente dans {dureeDetentionAnnees} ans : {formatEuro(s.prixRevente)} — Frais ({formatEuro(s.fraisRevente)}) — Capital net récupéré (part {partAchat}%) : {formatEuro(s.recuperation)}
                         </p>
                       )}
                     </div>
@@ -661,9 +796,65 @@ export default function App() {
                     <td className={`px-5 py-3 font-medium ${T.amberRow}`}>Nourriture sur place</td>
                     {visibleScenarios.map(s => <td key={`fd-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.food > 0 ? formatEuro(s.food) : <span className={T.textFaintest}>—</span>}</td>)}
                   </tr>
-                  <tr className={T.rowEmerald}>
-                    <td className={`px-5 py-3 font-medium ${T.emeraldRow}`}>Notaire + Apport initial</td>
+                   <tr className={T.rowEmerald}>
+                    <td className={`px-5 py-3 font-medium ${T.emeraldRow}`}>Notaire + Apport + Travaux achat</td>
                     {visibleScenarios.map(s => <td key={`ap-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.notaire + s.app > 0 ? formatEuro(s.notaire + s.app) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Notaire + Apport</td>
+                    {visibleScenarios.map(s => <td key={`notapp-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.notaire + s.app - s.travauxAchat > 0 ? formatEuro(s.notaire + s.app - s.travauxAchat) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Travaux à l'achat</td>
+                    {visibleScenarios.map(s => <td key={`trav-achat-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.travauxAchat > 0 ? formatEuro(s.travauxAchat) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-5 py-3 font-medium ${T.capitalText}`}>Prix de revente estimé</td>
+                    {visibleScenarios.map(s => <td key={`rv-${s.id}`} className={`px-4 py-3 text-center font-bold ${T.capitalText}`}>{s.prixRevente > 0 ? formatEuro(s.prixRevente) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-5 py-3 font-medium ${T.emeraldRow}`}>Frais de revente (total)</td>
+                    {visibleScenarios.map(s => <td key={`frt-${s.id}`} className={`px-4 py-3 text-center font-bold ${T.textSecondary}`}>{s.fraisRevente > 0 ? formatEuro(-s.fraisRevente) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Frais d'agence ({fraisAgenceRevente}%)</td>
+                    {visibleScenarios.map(s => <td key={`fra-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.fraisAgence > 0 ? formatEuro(-s.fraisAgence) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Impôt plus-value{visibleScenarios.find(s => s.id === 'achat') ? ` (abatt. IR ${Math.round(visibleScenarios.find(s => s.id === 'achat').abattementIR * 100)}% / PS ${Math.round(visibleScenarios.find(s => s.id === 'achat').abattementPS * 100)}%)` : ''}</td>
+                    {visibleScenarios.map(s => <td key={`ipv-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.impotPlusValue > 0 ? formatEuro(-s.impotPlusValue) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Diagnostics</td>
+                    {visibleScenarios.map(s => <td key={`diag-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.diagnostics > 0 ? formatEuro(-s.diagnostics) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Travaux avant revente</td>
+                    {visibleScenarios.map(s => <td key={`trav-rev-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.travauxRevente > 0 ? formatEuro(-s.travauxRevente) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-5 py-3 font-medium ${T.capitalText}`}>Capital net récupéré</td>
+                    {visibleScenarios.map(s => <td key={`cnr-${s.id}`} className={`px-4 py-3 text-center font-bold ${T.capitalText}`}>{s.recuperation > 0 ? formatEuro(s.recuperation) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-5 py-3 font-medium ${T.capitalText}`}>Revenus locatifs nets</td>
+                    {visibleScenarios.map(s => <td key={`rln-${s.id}`} className={`px-4 py-3 text-center font-bold ${T.capitalText}`}>{s.revenusLocatifsNets > 0 ? formatEuro(s.revenusLocatifsNets) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Loyers bruts perçus</td>
+                    {visibleScenarios.map(s => <td key={`rlb-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.revenusBrutsTotal > 0 ? formatEuro(s.revenusBrutsTotal) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Frais de gestion</td>
+                    {visibleScenarios.map(s => <td key={`rfg-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.fraisGestionTotal > 0 ? formatEuro(-s.fraisGestionTotal) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Assurance PNO</td>
+                    {visibleScenarios.map(s => <td key={`rpno-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.assurancePNOTotal > 0 ? formatEuro(-s.assurancePNOTotal) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Impôt (micro-foncier, TMI {tmi}%)</td>
+                    {visibleScenarios.map(s => <td key={`ril-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.impotRevenusLocatifs > 0 ? formatEuro(-s.impotRevenusLocatifs) : <span className={T.textFaintest}>—</span>}</td>)}
                   </tr>
                   {/* Total */}
                   <tr className={`border-t-2 ${T.rowTotal}`}>
@@ -948,8 +1139,133 @@ export default function App() {
             <div className={`flex gap-3 rounded-2xl p-5 text-xs border ${T.note}`}>
               <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${T.noteIcon}`} />
               <p>
-                <span className={`font-semibold ${T.noteLabel}`}>Focus charges :</span> Le simulateur intègre les charges de copropriété (achat), les charges de vie (électricité, internet, assurance) et les taxes locales. Pour l'achat à deux, ces frais sont divisés selon votre part, contrairement à la location personnelle à 100 %.
+                <span className={`font-semibold ${T.noteLabel}`}>Focus charges :</span> Le simulateur intègre les charges de copropriété (achat), les charges de vie (électricité, internet, assurance) et les taxes locales. Pour l'achat à deux, ces frais sont divisés selon votre part, contrairement à la location personnelle à 100 %. Le scénario Achat inclut également, si applicable, les revenus locatifs nets perçus entre la fin de la pendularité et la revente (régime micro-foncier : abattement 30%, puis TMI + 17,2% prélèvements sociaux sur 70%).
               </p>
+            </div>
+
+            {/* STRATÉGIE ACHAT → LOCATION → REVENTE */}
+            <div className={`rounded-2xl border overflow-hidden ${T.card}`}>
+              <div className="px-6 py-5 space-y-6">
+                <div>
+                  <h2 className={`text-sm font-black uppercase tracking-widest mb-1 text-emerald-400`}>La stratégie Achat → Location → Revente</h2>
+                  <p className={`text-xs leading-relaxed ${T.textSecondary}`}>
+                    Cette stratégie consiste à acheter un appartement à Paris pour y dormir pendant ta période de pendularité, puis à le mettre en location une fois que tu n'en as plus besoin au quotidien, et enfin à le revendre après plusieurs années. L'idée centrale : transformer un coût subi (se loger à Paris) en un investissement qui travaille pour toi.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(() => {
+                    const achat = scenarios.find(s => s.id === 'achat');
+                    if (!achat) return null;
+                    const ratioAchat = partAchat / 100;
+                    const fraisNotaireTotal = prixAchat * (fraisNotairePourcent / 100);
+                    const montantEmprunte = prixAchat + fraisNotaireTotal - apport;
+                    const rMensuel = (tauxEmprunt / 100) / 12;
+                    const nTotalMois = dureeEmpruntAnnees * 12;
+                    const mensualite = montantEmprunte * (rMensuel * Math.pow(1 + rMensuel, nTotalMois)) / (Math.pow(1 + rMensuel, nTotalMois) - 1);
+                    const moisTotaux = dureeAnnees * 12;
+                    const capitalRembourse = montantEmprunte - (montantEmprunte * (Math.pow(1 + rMensuel, nTotalMois) - Math.pow(1 + rMensuel, moisTotaux)) / (Math.pow(1 + rMensuel, nTotalMois) - 1));
+                    const dureeLocation = Math.max(0, dureeDetentionAnnees - dureeAnnees);
+                    const loyerMoyenMensuel = loyerPercuMensuel * (1 - vacanceLocative / 100);
+                    return (<>
+                  {/* Phase 1 */}
+                  <div className={`rounded-xl p-4 border ${T.card} border-emerald-700/40`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 1 — Pendularité</p>
+                    <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
+                      Tu rembourses ton emprunt tout en habitant le bien pendant {dureeAnnees} ans. Chaque euro de mensualité construit du capital au lieu de partir à fonds perdus.
+                    </p>
+                    <div className="space-y-2">
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Mensualité (part {partAchat}%)</span>
+                        <span className={`font-black text-emerald-400`}>{formatEuroExact(mensualite * ratioAchat)} / mois</span>
+                      </div>
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Capital remboursé en {dureeAnnees} ans</span>
+                        <span className={`font-black text-emerald-400`}>{formatEuro(capitalRembourse * ratioAchat)}</span>
+                      </div>
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Apport + frais notaire engagés</span>
+                        <span className={`font-black ${T.textSecondary}`}>{formatEuro((apport + fraisNotaireTotal) * ratioAchat)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Phase 2 */}
+                  <div className={`rounded-xl p-4 border ${T.card} border-emerald-700/40`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 2 — Location</p>
+                    <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
+                      {dureeLocation > 0
+                        ? `Pendant ${dureeLocation} an${dureeLocation > 1 ? 's' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
+                        : `Aucune période de location avec les paramètres actuels (revente = fin de pendularité).`}
+                    </p>
+                    {dureeLocation > 0 && <div className="space-y-2">
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Loyer moyen perçu (part {partAchat}%)</span>
+                        <span className={`font-black text-emerald-400`}>{formatEuroExact(loyerMoyenMensuel * ratioAchat)} / mois</span>
+                      </div>
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Revenus locatifs nets sur {dureeLocation} ans</span>
+                        <span className={`font-black text-emerald-400`}>{formatEuro(achat.revenusLocatifsNets)}</span>
+                      </div>
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Dont impôt payé (TMI {tmi}%, micro-foncier)</span>
+                        <span className={`font-black ${T.textSecondary}`}>−{formatEuro(achat.impotRevenusLocatifs)}</span>
+                      </div>
+                    </div>}
+                  </div>
+                  {/* Phase 3 */}
+                  <div className={`rounded-xl p-4 border ${T.card} border-emerald-700/40`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 3 — Revente</p>
+                    <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
+                      Après {dureeDetentionAnnees} ans de détention, tu vends le bien. La plus-value est imposable avec des abattements ({Math.round(achat.abattementIR * 100)}% IR, {Math.round(achat.abattementPS * 100)}% PS selon la durée de détention).
+                    </p>
+                    <div className="space-y-2">
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Prix de vente estimé</span>
+                        <span className={`font-black text-emerald-400`}>{formatEuro(achat.prixRevente)}</span>
+                      </div>
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Frais de revente (agence, impôt, diag.)</span>
+                        <span className={`font-black ${T.textSecondary}`}>−{formatEuro(achat.fraisRevente)}</span>
+                      </div>
+                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                        <span className={T.textFaint}>Capital net récupéré (part {partAchat}%)</span>
+                        <span className={`font-black text-emerald-400`}>{formatEuro(achat.recuperation)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  </>);
+                  })()}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Avantages */}
+                  <div className={`rounded-xl p-4 border ${T.card} ${T.isDark ? 'border-emerald-800/50 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/50'}`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Avantages</p>
+                    <ul className={`text-xs space-y-2 ${T.textSecondary}`}>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold flex-shrink-0">+</span>Les mensualités construisent un patrimoine au lieu de « partir à fonds perdus »</li>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold flex-shrink-0">+</span>La plus-value immobilière parisienne peut significativement améliorer le bilan final</li>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold flex-shrink-0">+</span>Les loyers perçus réduisent le coût net réel de toute la stratégie</li>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold flex-shrink-0">+</span>En cas d'achat à deux, les charges sont mutualisées et le coût par personne diminue</li>
+                      <li className="flex gap-2"><span className="text-emerald-400 font-bold flex-shrink-0">+</span>Détenir un bien à Paris offre une option de retour (mutation, changement de vie)</li>
+                    </ul>
+                  </div>
+                  {/* Inconvénients */}
+                  <div className={`rounded-xl p-4 border ${T.card} ${T.isDark ? 'border-amber-800/50 bg-amber-950/20' : 'border-amber-200 bg-amber-50/50'}`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-3">Risques & contraintes</p>
+                    <ul className={`text-xs space-y-2 ${T.textSecondary}`}>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold flex-shrink-0">−</span>L'apport initial et les frais de notaire immobilisent un capital important dès le départ</li>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold flex-shrink-0">−</span>La gestion locative demande du temps ou des frais d'agence (vacance, impayés, travaux)</li>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold flex-shrink-0">−</span>La plus-value est fiscalisée si la détention est inférieure à 22 ans (IR) ou 30 ans (PS)</li>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold flex-shrink-0">−</span>Le marché immobilier parisien peut stagner ou baisser — la plus-value n'est pas garantie</li>
+                      <li className="flex gap-2"><span className="text-amber-400 font-bold flex-shrink-0">−</span>Revendre un bien occupé peut être complexe et nécessite de respecter les droits du locataire</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <p className={`text-[11px] leading-relaxed ${T.textFaint}`}>
+                  Ce simulateur modélise tous ces paramètres : durée de pendularité, durée de détention, loyer perçu, vacance locative, frais de gestion, assurance PNO, fiscalité des revenus locatifs (micro-foncier), et fiscalité de la plus-value avec abattements légaux. Les chiffres affichés sont des estimations basées sur les hypothèses renseignées — ils ne constituent pas un conseil en investissement.
+                </p>
+              </div>
             </div>
 
           </main>

@@ -350,9 +350,13 @@ export default function App() {
     const taxesTotalesAchat = calculerTotalInflate(taxeHabitationAchatAnnuelle, dureeAnnees, inf);
 
     const coutTgvQuotidien = calculerTotalInflate(abonnementTgvMensuel * 12, dureeAnnees, inf);
+    // TGV : rentre chaque soir → autant d'A/R que de jours à Paris
+    const arParSemaineTgv = joursParSemaine;
+    // Hôtel / Location / Achat : ne rentre pas les nuits sur place
     const arParSemaine = joursParSemaine - nuitsParSemaine;
 
-    const trajetsParAnTgv = arParSemaine * 2 * semainesParAn;
+    const trajetsParAnTgv = arParSemaineTgv * 2 * semainesParAn;
+    const trajetsParAnHebdo = arParSemaine * 2 * semainesParAn;
 
     const coutCarteLiberteAbonnement = calculerTotalInflate(abonnementCarteLiberteAnnuel, dureeAnnees, inf);
     const coutCarteLiberteTrajetParAn = prixBilletCarteLiberte * trajetsParAnTgv;
@@ -361,7 +365,6 @@ export default function App() {
     const coutTransportHotelTotal = calculerTotalInflate(abonnementTgvMensuel * 12, dureeAnnees, inf);
     const coutHotelTotal = calculerTotalInflate(prixNuitHotel * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
     const repasHotelTotal = calculerTotalInflate(budgetRepasHotelJour * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
-    const trajetsParAnHebdo = trajetsParAnTgv;
 
     const coutLocationTotal = calculerTotalInflate(loyerMensuel * 12, dureeAnnees, inf);
     const repasAppartTotal = calculerTotalInflate(budgetRepasAppartJour * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
@@ -536,6 +539,7 @@ export default function App() {
     salaireBrutAnnuel, doubleResidenceDeductible,
   ]);
 
+  const arParSemaineCalcTgv = joursParSemaine;
   const arParSemaineCalc = joursParSemaine - nuitsParSemaine;
 
   const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
@@ -649,10 +653,16 @@ export default function App() {
                   <Select value={nuitsParSemaine} onChange={e => setNuitsParSemaine(Number(e.target.value))} options={Array.from({length: joursParSemaine}, (_, i) => i).map(v => ({ value: v, label: v === 0 ? 'Aucune' : `${v} nuit${v > 1 ? 's' : ''}` }))} T={T} />
                 </Field>
               </div>
-              <div className={`mt-1 rounded-lg px-3 py-2 text-[11px] flex items-center justify-between ${T.rowAlt}`}>
-                <span className={T.textFaint}>A/R TGV / semaine (calculé)</span>
-                <span className={`font-black text-indigo-400`}>{arParSemaineCalc} A/R</span>
-              </div>
+                <div className={`mt-1 rounded-lg px-3 py-2 text-[11px] flex items-center justify-between ${T.rowAlt}`}>
+                  <span className={T.textFaint}>A/R TGV / semaine (calculé)</span>
+                  <span className={`font-black text-indigo-400`}>{arParSemaineCalcTgv} A/R</span>
+                </div>
+                {nuitsParSemaine > 0 && (
+                  <div className={`mt-1 rounded-lg px-3 py-2 text-[11px] flex items-center justify-between ${T.rowAlt}`}>
+                    <span className={T.textFaint}>A/R Hôtel / Location / Achat / sem (calculé)</span>
+                    <span className={`font-black text-indigo-400`}>{arParSemaineCalc} A/R</span>
+                  </div>
+                )}
             </SectionCard>
 
             <SectionCard title="Transport" icon={<Train className="w-3.5 h-3.5" />} accent="sky" storageKey="sectionTransport" T={T}>
@@ -676,7 +686,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Loyer" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
                 <Field label="Repas" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
-                <Field label="Élec / Web / Assur" T={T}><Input value={chargesAnnexesLocationMensuelles} onChange={e => setChargesAnnexesLocationMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Élec / Assur" T={T}><Input value={chargesAnnexesLocationMensuelles} onChange={e => setChargesAnnexesLocationMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
                 <Field label="Taxe Hab / Fonc" tooltip="Taxe d'habitation (si applicable) et taxe foncière annuelle sur le logement parisien." T={T}><Input value={taxeHabitationLocationAnnuelle} onChange={e => setTaxeHabitationLocationAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
                 <Field label="Frais installation" T={T}><Input value={fraisInstallation} onChange={e => setFraisInstallation(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>

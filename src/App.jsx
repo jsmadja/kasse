@@ -683,6 +683,10 @@ export default function App() {
                 <Field label="Repas" T={T}><Input value={budgetRepasHotelJour} onChange={e => setBudgetRepasHotelJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
               </div>
               <SubGroup label="Location" color="purple" T={T} />
+              <a href="https://www.seloger.com/classified-search?distributionTypes=Rent&energyCertificate=A,B,C,D&estateTypes=Apartment&locations=eyJwbGFjZUlkcyI6WyJTVFJURlIxNDMwIl0sImR1cmF0aW9uIjoiMzAiLCJtb2RlIjoiVHJhbnNpdCJ9&numberOfRoomsMax=2&priceMax=1000&projectTypes=Stock&spaceMin=15&order=PricePerSquareMeterDesc" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 text-[11px] font-medium mb-3 text-purple-400 hover:text-purple-300 transition-colors`}>
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                Voir les annonces SeLoger correspondantes
+              </a>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Loyer" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
                 <Field label="Repas" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
@@ -693,7 +697,7 @@ export default function App() {
             </SectionCard>
 
             <SectionCard title="Achat" icon={<ShieldCheck className="w-3.5 h-3.5" />} accent="emerald" storageKey="sectionAchat" T={T}>
-              <a href="https://www.seloger.com/classified-search?distributionTypes=Buy&energyCertificate=A,B,C,D&estateTypes=Apartment&locations=eyJwbGFjZUlkcyI6WyJTVFJURlIxNDMwIl0sImR1cmF0aW9uIjoiMjAiLCJtb2RlIjoiVHJhbnNpdCJ9&numberOfRoomsMax=2&priceMax=210000&priceMin=170000&projectTypes=Resale&order=PriceAsc" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 text-[11px] font-medium mb-3 text-emerald-400 hover:text-emerald-300 transition-colors`}>
+              <a href="https://www.seloger.com/classified-search?distributionTypes=Buy&energyCertificate=A,B,C,D&estateTypes=Apartment&locations=eyJwbGFjZUlkcyI6WyJTVFJURlIxNDMwIl0sImR1cmF0aW9uIjoiMjAiLCJtb2RlIjoiVHJhbnNpdCJ9&numberOfRoomsMax=2&priceMax=210000&priceMin=170000&projectTypes=Resale&spaceMin=15&order=SpaceDesc" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 text-[11px] font-medium mb-3 text-emerald-400 hover:text-emerald-300 transition-colors`}>
                 <ExternalLink className="w-3 h-3 flex-shrink-0" />
                 Voir les annonces SeLoger correspondantes
               </a>

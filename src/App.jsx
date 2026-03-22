@@ -1418,26 +1418,29 @@ export default function App() {
                   const anneeDepart = new Date().getFullYear();
                   const jamaisRevendre = dureeDetentionAnnees === 0;
 
-                  // Durées des phases
-                  const dureeLocation       = jamaisRevendre ? Math.max(0, 40 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
-                  const dureeLocationRetrait = jamaisRevendre ? 15 : 0; // 25 → 40 ans (retraite → décès)
-                  const dureeSuccession      = jamaisRevendre ? 0 : 0;  // (pas de phase après revente)
-                  const totalAns = jamaisRevendre ? 40 : dureeDetentionAnnees;
+                  // Durées des phases (cas "jamais revendre")
+                  // Phase 1 : pendularité (0 → dureeAnnees)
+                  // Phase 2 : location active (dureeAnnees → 25)
+                  // Phase 3 : location retraite (25 → 40)
+                  // Phase 4 : succession (fixe)
+                  const dureeLocActive  = jamaisRevendre ? Math.max(0, 25 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
+                  const dureeLocRetr    = jamaisRevendre ? 15 : 0;
+                  const totalAns        = jamaisRevendre ? 40 : dureeDetentionAnnees;
 
                   // Années jalons
-                  const anneeFinPend    = anneeDepart + dureeAnnees;
-                  const anneeFinPret    = anneeDepart + dureeEmpruntAnnees;
-                  const anneeRetraite   = anneeDepart + 25;
-                  const anneeDeces      = anneeDepart + 40;
-                  const anneeRevente    = jamaisRevendre ? null : anneeDepart + dureeDetentionAnnees;
+                  const anneeFinPend  = anneeDepart + dureeAnnees;
+                  const anneeFinPret  = anneeDepart + dureeEmpruntAnnees;
+                  const anneeRetraite = anneeDepart + 25;
+                  const anneeDeces    = anneeDepart + 40;
+                  const anneeRevente  = jamaisRevendre ? null : anneeDepart + dureeDetentionAnnees;
 
-                  // Calcul des % (Phase 3 Revente = segment fixe 6% si applicable)
-                  const PHASE_REVENTE_PCT = jamaisRevendre ? 0 : 6;
+                  // Largeur fixe Phase Revente / Succession
+                  const PHASE_REVENTE_PCT   = jamaisRevendre ? 0 : 6;
                   const scale = (ans) => totalAns > 0 ? (ans / totalAns) * (100 - PHASE_REVENTE_PCT) : 0;
 
                   const pctPend     = scale(dureeAnnees);
-                  const pctLoc      = scale(dureeLocation);
-                  const pctLocRetr  = scale(dureeLocationRetrait);
+                  const pctLocAct   = scale(dureeLocActive);
+                  const pctLocRetr  = scale(dureeLocRetr);
 
                   const segments = [
                     {
@@ -1446,17 +1449,17 @@ export default function App() {
                       color: T.isDark ? 'bg-emerald-800' : 'bg-emerald-600',
                       textColor: 'text-white',
                     },
-                    ...(dureeLocation > 0 ? [{
-                      label: 'Phase 2', sublabel: `Location · ${dureeLocation} an${dureeLocation > 1 ? 's' : ''}`,
-                      pct: pctLoc,
+                    ...(dureeLocActive > 0 ? [{
+                      label: 'Phase 2', sublabel: `Location · ${dureeLocActive} an${dureeLocActive > 1 ? 's' : ''}`,
+                      pct: pctLocAct,
                       color: T.isDark ? 'bg-emerald-600' : 'bg-emerald-400',
                       textColor: 'text-white',
                     }] : []),
-                    ...(jamaisRevendre && dureeLocationRetrait > 0 ? [{
-                      label: 'Phase 3', sublabel: `Location retraite · ${dureeLocationRetrait} ans`,
+                    ...(jamaisRevendre && dureeLocRetr > 0 ? [{
+                      label: 'Phase 3', sublabel: `Retraite · ${dureeLocRetr} ans`,
                       pct: pctLocRetr,
-                      color: T.isDark ? 'bg-emerald-500/60' : 'bg-emerald-300',
-                      textColor: T.isDark ? 'text-white' : 'text-emerald-900',
+                      color: T.isDark ? 'bg-amber-700/70' : 'bg-amber-300',
+                      textColor: T.isDark ? 'text-white' : 'text-amber-900',
                     }] : []),
                     ...(!jamaisRevendre ? [{
                       label: 'Phase 3', sublabel: 'Revente',
@@ -1466,8 +1469,7 @@ export default function App() {
                     }] : []),
                     ...(jamaisRevendre ? [{
                       label: 'Phase 4', sublabel: 'Succession',
-                      pct: 0, // largeur fixe via minWidth
-                      fixed: true,
+                      pct: 0, fixed: true,
                       color: T.isDark ? 'bg-slate-600' : 'bg-slate-300',
                       textColor: T.isDark ? 'text-slate-300' : 'text-slate-700',
                     }] : []),
@@ -1477,16 +1479,16 @@ export default function App() {
                   const toePct = (ans) => totalAns > 0 ? Math.min(98, scale(ans)) : 0;
 
                   const jalons = [
-                    { pct: 0,                    label: String(anneeDepart),       sub: 'Achat',          color: T.textFaint,          align: 'left' },
-                    { pct: toePct(dureeAnnees),  label: String(anneeFinPend),      sub: 'Début location', color: 'text-emerald-400',   align: 'center' },
+                    { pct: 0,                        label: String(anneeDepart),   sub: 'Achat',          color: T.textFaint,        align: 'left' },
+                    { pct: toePct(dureeAnnees),      label: String(anneeFinPend),  sub: 'Début location', color: 'text-emerald-400', align: 'center' },
                     ...(dureeEmpruntAnnees !== dureeAnnees && dureeEmpruntAnnees < totalAns
                       ? [{ pct: toePct(dureeEmpruntAnnees), label: String(anneeFinPret), sub: 'Fin prêt', color: 'text-sky-400', align: 'center' }]
                       : []),
                     ...(jamaisRevendre ? [
-                      { pct: toePct(25),         label: String(anneeRetraite),     sub: 'Retraite',       color: 'text-amber-400',     align: 'center' },
-                      { pct: 100,                label: String(anneeDeces),        sub: 'Succession',     color: T.textFaint,          align: 'right' },
+                      { pct: toePct(25),             label: String(anneeRetraite), sub: 'Retraite',       color: 'text-amber-400',   align: 'center' },
+                      { pct: 100,                    label: String(anneeDeces),    sub: 'Succession',     color: T.textFaint,        align: 'right' },
                     ] : [
-                      { pct: 100,                label: String(anneeRevente),      sub: 'Revente',        color: 'text-emerald-400',   align: 'right' },
+                      { pct: 100,                    label: String(anneeRevente),  sub: 'Revente',        color: 'text-emerald-400', align: 'right' },
                     ]),
                   ];
 

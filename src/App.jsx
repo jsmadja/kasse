@@ -385,20 +385,22 @@ export default function App() {
     const apportPart = apport * ratioAchat;
     const notairePart = fraisNotaireTotal * ratioAchat;
 
-    const prixReventeFinal = prixAchat * Math.pow(1 + plusValueAnnuelle / 100, dureeDetentionAnnees);
+    const jamaisRevendre = dureeDetentionAnnees === 0;
+
+    const prixReventeFinal = jamaisRevendre ? 0 : prixAchat * Math.pow(1 + plusValueAnnuelle / 100, dureeDetentionAnnees);
 
     // Frais de revente
-    const fraisAgenceMontant = prixReventeFinal * (fraisAgenceRevente / 100);
+    const fraisAgenceMontant = jamaisRevendre ? 0 : prixReventeFinal * (fraisAgenceRevente / 100);
 
     // Capital restant dû au moment de la revente (basé sur dureeDetentionAnnees)
-    const moisDetention = dureeDetentionAnnees * 12;
-    const capitalRestantDuRevente = montantEmprunte * (Math.pow(1 + rMensuel, nTotalMois) - Math.pow(1 + rMensuel, Math.min(moisDetention, nTotalMois))) / (Math.pow(1 + rMensuel, nTotalMois) - 1);
+    const moisDetention = jamaisRevendre ? 0 : dureeDetentionAnnees * 12;
+    const capitalRestantDuRevente = jamaisRevendre ? 0 : montantEmprunte * (Math.pow(1 + rMensuel, nTotalMois) - Math.pow(1 + rMensuel, Math.min(moisDetention, nTotalMois))) / (Math.pow(1 + rMensuel, nTotalMois) - 1);
 
     // Impôt sur plus-value résidence secondaire
-    const plusValueBrute = Math.max(0, prixReventeFinal - prixAchat - fraisNotaireTotal);
+    const plusValueBrute = jamaisRevendre ? 0 : Math.max(0, prixReventeFinal - prixAchat - fraisNotaireTotal);
     // Abattement IR : 0% années 1-5, 6%/an années 6-21, 4% année 22, exo à partir 22 ans
     const abattementIR = (() => {
-      if (dureeDetentionAnnees >= 22) return 1;
+      if (jamaisRevendre || dureeDetentionAnnees >= 22) return 1;
       if (dureeDetentionAnnees <= 5) return 0;
       const annees6a21 = Math.min(dureeDetentionAnnees, 21) - 5;
       const annee22 = dureeDetentionAnnees === 22 ? 1 : 0;
@@ -406,7 +408,7 @@ export default function App() {
     })();
     // Abattement PS : 0% années 1-5, 1,65%/an années 6-21, 1,60% année 22, 9%/an années 23-30, exo 30 ans
     const abattementPS = (() => {
-      if (dureeDetentionAnnees >= 30) return 1;
+      if (jamaisRevendre || dureeDetentionAnnees >= 30) return 1;
       if (dureeDetentionAnnees <= 5) return 0;
       const annees6a21 = Math.min(dureeDetentionAnnees, 21) - 5;
       const annee22 = dureeDetentionAnnees >= 22 ? 1 : 0;
@@ -415,12 +417,12 @@ export default function App() {
     })();
     const plusValueImposableIR = plusValueBrute * (1 - abattementIR);
     const plusValueImposablePS = plusValueBrute * (1 - abattementPS);
-    const impotPlusValue = plusValueImposableIR * 0.19 + plusValueImposablePS * 0.172;
+    const impotPlusValue = jamaisRevendre ? 0 : plusValueImposableIR * 0.19 + plusValueImposablePS * 0.172;
 
-    const fraisReventeTotal = (fraisAgenceMontant + impotPlusValue + fraisDiagnostics + travauxRevente) * ratioAchat;
+    const fraisReventeTotal = jamaisRevendre ? 0 : (fraisAgenceMontant + impotPlusValue + fraisDiagnostics + travauxRevente) * ratioAchat;
 
-    // Revenus locatifs sur la période entre fin de pendularité et revente
-    const dureeLocationAnnees = Math.max(0, dureeDetentionAnnees - dureeAnnees);
+    // Revenus locatifs sur la période entre fin de pendularité et revente (ou indéfinie si jamais revendre)
+    const dureeLocationAnnees = jamaisRevendre ? dureeAnnees : Math.max(0, dureeDetentionAnnees - dureeAnnees);
     // Loyer brut annuel avec taux d'occupation et inflation, à partir de l'année dureeAnnees
     let revenusBrutsTotal = 0;
     let assurancePNOTotal = 0;
@@ -575,7 +577,7 @@ export default function App() {
 
       {/* HEADER */}
       <header className={`border-b backdrop-blur sticky top-0 z-10 ${T.header}`}>
-        <div className="max-w-screen-2xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
               <Calculator className="w-4 h-4 text-white" />
@@ -622,7 +624,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="max-w-screen-2xl mx-auto px-6 md:px-10 xl:px-16 py-10">
+      <div className="mx-auto px-6 md:px-10 xl:px-16 py-10">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
 
           {/* ── PANNEAU DE CONFIGURATION ── */}
@@ -697,9 +699,11 @@ export default function App() {
               </div>
               <SubGroup label="Mise en location" color="teal" T={T} />
               <p className={`text-[10px] -mt-2 ${T.textFaint}`}>
-                {dureeDetentionAnnees > dureeAnnees
-                  ? `Entre la fin de pendularité (${dureeAnnees} ans) et la revente (${dureeDetentionAnnees} ans) — ${dureeDetentionAnnees - dureeAnnees} an${dureeDetentionAnnees - dureeAnnees > 1 ? 's' : ''} de location.`
-                  : `Aucune période de location (revente ≤ fin de pendularité).`}
+                {dureeDetentionAnnees === 0
+                  ? `Location indéfinie après la fin de pendularité (${dureeAnnees} ans) — pas de revente prévue.`
+                  : dureeDetentionAnnees > dureeAnnees
+                    ? `Entre la fin de pendularité (${dureeAnnees} ans) et la revente (${dureeDetentionAnnees} ans) — ${dureeDetentionAnnees - dureeAnnees} an${dureeDetentionAnnees - dureeAnnees > 1 ? 's' : ''} de location.`
+                    : `Aucune période de location (revente ≤ fin de pendularité).`}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Loyer perçu" T={T}><Input value={loyerPercuMensuel} onChange={e => setLoyerPercuMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
@@ -710,7 +714,7 @@ export default function App() {
               <SubGroup label="Revente" color="emerald" T={T} />
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Revente dans" T={T}>
-                  <Select value={dureeDetentionAnnees} onChange={e => setDureeDetentionAnnees(Number(e.target.value))} options={[5,8,10,12,15,18,20,22,25,30].map(v => ({ value: v, label: `${v} ans` }))} T={T} />
+                  <Select value={dureeDetentionAnnees} onChange={e => setDureeDetentionAnnees(Number(e.target.value))} options={[{ value: 0, label: 'Jamais' }, ...[5,8,10,12,15,18,20,22,25,30].map(v => ({ value: v, label: `${v} ans` }))]} T={T} />
                 </Field>
                 <Field label="Plus-value / an" T={T}><Input step="0.1" value={plusValueAnnuelle} onChange={e => setPlusValueAnnuelle(Number(e.target.value))} suffix="%/an" T={T} /></Field>
                 <Field label="Frais agence" T={T}><Input step="0.5" value={fraisAgenceRevente} onChange={e => setFraisAgenceRevente(Number(e.target.value))} suffix="%" T={T} /></Field>
@@ -839,7 +843,9 @@ export default function App() {
                       </div>
                       {s.id === 'achat' && (
                         <p className={`text-[10px] mt-1 text-right ${T.capitalText}`}>
-                          Revente dans {dureeDetentionAnnees} ans : {formatEuro(s.prixRevente)} — Frais ({formatEuro(s.fraisRevente)}) — Capital net récupéré (part {partAchat}%) : {formatEuro(s.recuperation)}
+                          {dureeDetentionAnnees === 0
+                            ? `Pas de revente prévue.`
+                            : `Revente dans ${dureeDetentionAnnees} ans : ${formatEuro(s.prixRevente)} — Frais (${formatEuro(s.fraisRevente)}) — Capital net récupéré (part ${partAchat}%) : ${formatEuro(s.recuperation)}`}
                         </p>
                       )}
                     </div>
@@ -1429,8 +1435,8 @@ export default function App() {
                   <div className={`rounded-xl p-4 border ${T.card} border-emerald-700/40`}>
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 2 — Location</p>
                     <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
-                      {dureeLocation > 0
-                        ? `Pendant ${dureeLocation} an${dureeLocation > 1 ? 's' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
+                   {dureeLocation > 0
+                        ? `Pendant ${dureeDetentionAnnees === 0 ? dureeAnnees : dureeLocation} an${(dureeDetentionAnnees === 0 ? dureeAnnees : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ' (durée de simulation)' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
                         : `Aucune période de location avec les paramètres actuels (revente = fin de pendularité).`}
                     </p>
                     {dureeLocation > 0 && <div className="space-y-2">
@@ -1439,7 +1445,7 @@ export default function App() {
                         <span className={`font-black text-emerald-400`}>{formatEuroExact(loyerMoyenMensuel * ratioAchat)} / mois</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                        <span className={T.textFaint}>Revenus locatifs nets sur {dureeLocation} ans</span>
+                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? dureeAnnees : dureeLocation} ans{dureeDetentionAnnees === 0 ? ' (simulation)' : ''}</span>
                         <span className={`font-black text-emerald-400`}>{formatEuro(achat.revenusLocatifsNets)}</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
@@ -1452,22 +1458,27 @@ export default function App() {
                   <div className={`rounded-xl p-4 border ${T.card} border-emerald-700/40`}>
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 3 — Revente</p>
                     <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
-                      Après {dureeDetentionAnnees} ans de détention, tu vends le bien. La plus-value est imposable avec des abattements ({Math.round(achat.abattementIR * 100)}% IR, {Math.round(achat.abattementPS * 100)}% PS selon la durée de détention).
+                      {dureeDetentionAnnees === 0
+                        ? `Aucune revente prévue. Le bien reste dans ton patrimoine indéfiniment.`
+                        : `Après ${dureeDetentionAnnees} ans de détention, tu vends le bien. La plus-value est imposable avec des abattements (${Math.round(achat.abattementIR * 100)}% IR, ${Math.round(achat.abattementPS * 100)}% PS selon la durée de détention).`}
                     </p>
-                    <div className="space-y-2">
-                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                        <span className={T.textFaint}>Prix de vente estimé</span>
-                        <span className={`font-black text-emerald-400`}>{formatEuro(achat.prixRevente)}</span>
-                      </div>
-                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                        <span className={T.textFaint}>Frais de revente (agence, impôt, diag.)</span>
-                        <span className={`font-black ${T.textSecondary}`}>−{formatEuro(achat.fraisRevente)}</span>
-                      </div>
-                      <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                        <span className={T.textFaint}>Capital net récupéré (part {partAchat}%)</span>
-                        <span className={`font-black text-emerald-400`}>{formatEuro(achat.recuperation)}</span>
-                      </div>
-                    </div>
+                    {dureeDetentionAnnees === 0
+                      ? <p className={`text-xs italic ${T.textFaint}`}>Configure une durée de revente pour voir le capital récupéré.</p>
+                      : <div className="space-y-2">
+                          <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                            <span className={T.textFaint}>Prix de vente estimé</span>
+                            <span className={`font-black text-emerald-400`}>{formatEuro(achat.prixRevente)}</span>
+                          </div>
+                          <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                            <span className={T.textFaint}>Frais de revente (agence, impôt, diag.)</span>
+                            <span className={`font-black ${T.textSecondary}`}>−{formatEuro(achat.fraisRevente)}</span>
+                          </div>
+                          <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
+                            <span className={T.textFaint}>Capital net récupéré (part {partAchat}%)</span>
+                            <span className={`font-black text-emerald-400`}>{formatEuro(achat.recuperation)}</span>
+                          </div>
+                        </div>
+                    }
                   </div>
                   </>);
                   })()}

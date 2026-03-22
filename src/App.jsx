@@ -261,6 +261,10 @@ export default function App() {
   const [vacanceLocative, setVacanceLocative] = useLocalStorage('vacanceLocative', 5);
   const [tmi, setTmi] = useLocalStorage('tmi', 30);
 
+  // Paramètres Frais réels (défiscalisation salarié)
+  const [salaireBrutAnnuel, setSalaireBrutAnnuel] = useLocalStorage('salaireBrutAnnuel', 80000);
+  const [fraisReelsActifs, setFraisReelsActifs] = useLocalStorage('fraisReelsActifs', true);
+
   const calculerTotalInflate = (montantAnnuel, annees, taux) => {
     let total = 0;
     let montantCourant = montantAnnuel;
@@ -407,20 +411,64 @@ export default function App() {
       };
     };
 
+    // ── Frais réels déductibles par scénario (régime salarié) ──
+    // Abattement forfaitaire 10% plafonné à 14 171 € (barème 2024)
+    const PLAFOND_ABATTEMENT_10 = 14171;
+    const abattementForfaitaireAn = Math.min(salaireBrutAnnuel * 0.10, PLAFOND_ABATTEMENT_10);
+
+    // Transport déductible annuel (A/R domicile-travail) — 1ère année, non inflaté
+    const navigoAn = passLocalMensuel * 12;
+    const tgvAboAn = abonnementTgvMensuel * 12;
+    const liberteAboAn = abonnementCarteLiberteAnnuel;
+    const liberteBilletsAn = prixBilletCarteLiberte * trajetsParAnTgv;
+
+    // Hébergement déductible (double résidence)
+    const hotelAn = prixNuitHotel * nuitsParSemaine * semainesParAn;
+    const loyerAn = loyerMensuel * 12;
+    const fraisNotaireCalc = prixAchat * (fraisNotairePourcent / 100);
+    const montantEmprunteCalc = prixAchat + fraisNotaireCalc - apport;
+    const rMensuelCalc = (tauxEmprunt / 100) / 12;
+    const nTotalMoisCalc = dureeEmpruntAnnees * 12;
+    const mensualiteCalc = montantEmprunteCalc * (rMensuelCalc * Math.pow(1 + rMensuelCalc, nTotalMoisCalc)) / (Math.pow(1 + rMensuelCalc, nTotalMoisCalc) - 1);
+    const mensualitesAn = mensualiteCalc * 12 * (partAchat / 100);
+
+    // Repas déductibles (surcoût lié à l'éloignement du domicile fiscal)
+    const repasHotelAn = budgetRepasHotelJour * nuitsParSemaine * semainesParAn;
+    const repasAppartAn = budgetRepasAppartJour * nuitsParSemaine * semainesParAn;
+
+    const calcFraisReels = (transportAn, hebergementAn, repasAn) => {
+      const totalAn = transportAn + hebergementAn + repasAn;
+      const gainAn = Math.max(0, totalAn - abattementForfaitaireAn);
+      const economieAn = gainAn * (tmi / 100);
+      const totalDuree = totalAn * dureeAnnees;
+      const gainDuree = Math.max(0, totalDuree - abattementForfaitaireAn * dureeAnnees);
+      const economieDuree = gainDuree * (tmi / 100);
+      return { transportAn, hebergementAn, repasAn, totalAn, abattementForfaitaireAn, gainAn, economieAn, totalDuree, gainDuree, economieDuree };
+    };
+
+    const fraisReelsMap = {
+      'tgv':         calcFraisReels(tgvAboAn + navigoAn,               0,          0),
+      'tgv-liberte': calcFraisReels(liberteAboAn + liberteBilletsAn + navigoAn, 0, 0),
+      'hotel':       calcFraisReels(tgvAboAn + navigoAn,               hotelAn,    repasHotelAn),
+      'location':    calcFraisReels(tgvAboAn + navigoAn,               loyerAn,    repasAppartAn),
+      'achat':       calcFraisReels(tgvAboAn + navigoAn,               mensualitesAn, repasAppartAn),
+    };
+
     return [
       createScenario('tgv',         'TGV Quotidien (MAX ACTIF)',    <Train className="w-4 h-4" />, 'sky',     coutTgvQuotidien,              0,                                                            coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, "Abonnement illimité (max 250 trajets).", trajetsParAnTgv),
       createScenario('tgv-liberte', 'TGV Quotidien (Carte Liberté)',<Train className="w-4 h-4" />, 'teal',    coutCarteLiberteAbonnement,    calculerTotalInflate(coutCarteLiberteTrajetParAn, dureeAnnees, inf), coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, `Abo. ${abonnementCarteLiberteAnnuel}€/an + ${prixBilletCarteLiberte}€/trajet.`, trajetsParAnTgv),
       createScenario('hotel',       'Hôtel',                        <Bed className="w-4 h-4" />,   'orange',  coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutHotelTotal, 0, 0, 0, 0, repasHotelTotal, 0, 0, "A/R hebdo + Hôtel.", trajetsParAnHebdo, nuitsParSemaine > 0),
       createScenario('location',    'Location',                     <Building className="w-4 h-4" />,'purple', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutLocationTotal, 0, chargesVieTotaleLocation, taxesTotalesLocation, fraisInstallation, repasAppartTotal, 0, 0, "Loyer + A/R hebdo.", trajetsParAnHebdo, nuitsParSemaine > 0),
       createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, installationPart, repasAppartTotal, notairePart + travauxAchatPart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo, nuitsParSemaine > 0),
-    ];
+    ].map(s => ({ ...s, fraisReels: fraisReelsMap[s.id] }));
   }, [
     dureeAnnees, joursParSemaine, semainesParAn, nuitsParSemaine,
     abonnementTgvMensuel, abonnementCarteLiberteAnnuel, prixBilletCarteLiberte, prixNuitHotel, loyerMensuel,
     prixAchat, partAchat, apport, fraisNotairePourcent, tauxEmprunt, dureeEmpruntAnnees, chargesAnnuellesAchat,
     passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationLocationAnnuelle, taxeHabitationAchatAnnuelle, chargesAnnexesLocationMensuelles, chargesAnnexesAchatMensuelles,
     inflationAnnuelle, plusValueAnnuelle, fraisInstallation, fraisAgenceRevente, fraisDiagnostics, travauxAchat, travauxRevente, dureeDetentionAnnees,
-    loyerPercuMensuel, assurancePNOMensuelle, fraisGestionLocative, vacanceLocative, tmi
+    loyerPercuMensuel, assurancePNOMensuelle, fraisGestionLocative, vacanceLocative, tmi,
+    salaireBrutAnnuel,
   ]);
 
   const arParSemaineCalc = joursParSemaine - nuitsParSemaine;
@@ -446,6 +494,7 @@ export default function App() {
   const [annuelOpen, setAnnuelOpen] = useLocalStorage('accordionAnnuel', true);
   const [mensuelOpen, setMensuelOpen] = useLocalStorage('accordionMensuel', true);
   const [semaineOpen, setSemaineOpen] = useLocalStorage('accordionSemaine', true);
+  const [fraisReelsOpen, setFraisReelsOpen] = useLocalStorage('accordionFraisReels', true);
   const toggleScenario = (id) => {
     setActiveIds(prev => {
       const prevArr = Array.isArray(prev) ? prev : Array.from(prev);
@@ -594,9 +643,6 @@ export default function App() {
                 <Field label="Assurance PNO" T={T}><Input value={assurancePNOMensuelle} onChange={e => setAssurancePNOMensuelle(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
                 <Field label="Frais gestion" T={T}><Input step="0.5" value={fraisGestionLocative} onChange={e => setFraisGestionLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
                 <Field label="Vacance locative" T={T}><Input step="1" value={vacanceLocative} onChange={e => setVacanceLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
-                <Field label="TMI" T={T}>
-                  <Select value={tmi} onChange={e => setTmi(Number(e.target.value))} options={[0, 11, 30, 41, 45].map(v => ({ value: v, label: `${v} %` }))} T={T} />
-                </Field>
               </div>
               <SubGroup label="Revente" color="emerald" T={T} />
               <div className="grid grid-cols-2 gap-3">
@@ -610,9 +656,17 @@ export default function App() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Économie" icon={<TrendingUp className="w-3.5 h-3.5" />} accent="amber" storageKey="sectionEconomie" T={T}>
+            <SectionCard title="Économie & Fiscalité" icon={<TrendingUp className="w-3.5 h-3.5" />} accent="amber" storageKey="sectionEconomie" T={T}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Inflation" T={T}><Input step="0.1" value={inflationAnnuelle} onChange={e => setInflationAnnuelle(Number(e.target.value))} suffix="%/an" T={T} /></Field>
+              </div>
+              <SubGroup label="Frais réels (salarié)" color="amber" T={T} />
+              <p className={`text-[10px] -mt-2 ${T.textFaint}`}>Calcul de l'économie d'impôt si tu optes pour les frais réels plutôt que l'abattement forfaitaire 10%.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Salaire brut" T={T}><Input value={salaireBrutAnnuel} onChange={e => setSalaireBrutAnnuel(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="TMI" T={T}>
+                  <Select value={tmi} onChange={e => setTmi(Number(e.target.value))} options={[0, 11, 30, 41, 45].map(v => ({ value: v, label: `${v} %` }))} T={T} />
+                </Field>
               </div>
             </SectionCard>
 
@@ -1132,6 +1186,103 @@ export default function App() {
                   </tr>
                 </tbody>
               </table>
+              </div>}
+            </div>
+
+            {/* DÉFISCALISATION FRAIS RÉELS */}
+            <div className={`rounded-2xl border overflow-hidden ${T.card}`}>
+              <button
+                onClick={() => setFraisReelsOpen(o => !o)}
+                className={`w-full flex items-center justify-between px-6 py-4 transition ${T.cardHover}`}
+              >
+                <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 text-amber-400`}>
+                  <TrendingUp className="w-3.5 h-3.5" /> Défiscalisation — Frais réels (salarié)
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${T.chevron} ${fraisReelsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {fraisReelsOpen && <div className="px-6 pb-6 space-y-5">
+
+                {/* Explication */}
+                <p className={`text-xs leading-relaxed ${T.textSecondary}`}>
+                  En tant que salarié, tu peux déduire tes frais professionnels réels au lieu de l'abattement forfaitaire de 10%
+                  (plafonné à {formatEuroExact(Math.min(salaireBrutAnnuel * 0.10, 14171))}/an sur ton salaire de {formatEuroExact(salaireBrutAnnuel)}).
+                  Les frais de double résidence, de transport domicile-travail et de repas sont déductibles.
+                  Chaque euro supplémentaire au-delà du forfait te fait économiser {tmi}% d'impôt (ton TMI).
+                </p>
+
+                {/* Tableau comparatif */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse" style={{ minWidth: '600px' }}>
+                    <thead>
+                      <tr className={`border-b ${T.border}`}>
+                        <th className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest ${T.tableHeader}`}></th>
+                        {visibleScenarios.map(s => {
+                          const c = SCENARIO_COLORS[s.id];
+                          return (
+                            <th key={`fr-${s.id}`} className="px-4 py-3 text-center">
+                              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black ${c.badge}`}>
+                                {s.icon} {s.title}
+                              </div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${T.divider} text-sm`}>
+                      <tr className={T.rowAlt}>
+                        <td className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Transport déductible / an</td>
+                        {visibleScenarios.map(s => <td key={`frt-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{formatEuroExact(s.fraisReels.transportAn)}</td>)}
+                      </tr>
+                      <tr>
+                        <td className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Double résidence / an</td>
+                        {visibleScenarios.map(s => <td key={`frh-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.fraisReels.hebergementAn > 0 ? formatEuroExact(s.fraisReels.hebergementAn) : <span className={T.textFaintest}>—</span>}</td>)}
+                      </tr>
+                      <tr className={T.rowAmber}>
+                        <td className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Repas déductibles / an</td>
+                        {visibleScenarios.map(s => <td key={`frr-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.fraisReels.repasAn > 0 ? formatEuroExact(s.fraisReels.repasAn) : <span className={T.textFaintest}>—</span>}</td>)}
+                      </tr>
+                      <tr className={T.rowAlt}>
+                        <td className={`px-4 py-3 font-medium ${T.textMuted}`}>Total frais réels / an</td>
+                        {visibleScenarios.map(s => <td key={`frtot-${s.id}`} className={`px-4 py-3 text-center font-bold ${T.textSecondary}`}>{formatEuroExact(s.fraisReels.totalAn)}</td>)}
+                      </tr>
+                      <tr>
+                        <td className={`px-4 py-3 font-medium ${T.textMuted}`}>Abattement forfaitaire 10%</td>
+                        {visibleScenarios.map(s => <td key={`frforf-${s.id}`} className={`px-4 py-3 text-center ${T.textFaint}`}>−{formatEuroExact(s.fraisReels.abattementForfaitaireAn)}</td>)}
+                      </tr>
+                      <tr className={T.rowAlt}>
+                        <td className={`px-4 py-3 font-medium ${T.textMuted}`}>Gain déductible supplémentaire / an</td>
+                        {visibleScenarios.map(s => {
+                          const c = SCENARIO_COLORS[s.id];
+                          return <td key={`frgain-${s.id}`} className={`px-4 py-3 text-center font-bold ${s.fraisReels.gainAn > 0 ? c.text : T.textFaintest}`}>
+                            {s.fraisReels.gainAn > 0 ? `+${formatEuroExact(s.fraisReels.gainAn)}` : '—'}
+                          </td>;
+                        })}
+                      </tr>
+                      <tr className={`border-t-2 ${T.rowTotal}`}>
+                        <td className={`px-4 py-4 text-xs font-black uppercase tracking-widest text-amber-400`}>Économie d'impôt / an (TMI {tmi}%)</td>
+                        {visibleScenarios.map(s => {
+                          const c = SCENARIO_COLORS[s.id];
+                          return <td key={`freco-${s.id}`} className={`px-4 py-4 text-center text-xl font-black ${s.fraisReels.economieAn > 0 ? 'text-amber-400' : T.textFaintest}`}>
+                            {s.fraisReels.economieAn > 0 ? `+${formatEuroExact(s.fraisReels.economieAn)}` : '—'}
+                          </td>;
+                        })}
+                      </tr>
+                      <tr className={T.rowTotalAlt}>
+                        <td className={`px-4 py-3 text-xs ${T.textFaint}`}>Sur {dureeAnnees} ans (cumulé)</td>
+                        {visibleScenarios.map(s => <td key={`frecod-${s.id}`} className={`px-4 py-3 text-center text-sm font-bold ${s.fraisReels.economieDuree > 0 ? 'text-amber-400' : T.textFaintest}`}>
+                          {s.fraisReels.economieDuree > 0 ? `+${formatEuro(s.fraisReels.economieDuree)}` : '—'}
+                        </td>)}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className={`flex gap-3 rounded-xl p-4 text-xs border ${T.note}`}>
+                  <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${T.noteIcon}`} />
+                  <p>
+                    <span className={`font-semibold ${T.noteLabel}`}>Règles fiscales :</span> Les frais de double résidence (loyer, hôtel, mensualités) sont déductibles si le logement sur Paris est justifié par des contraintes professionnelles et que tu conserves ta résidence principale à Lille. Le transport domicile-travail est déductible pour son montant réel sans plafond spécifique, mais doit être justifié. Les repas professionnels sont déductibles au réel. Ces montants s'imputent sur le revenu imposable catégorie traitements et salaires. Consulte un expert-comptable ou un conseiller fiscal pour valider ta situation.
+                  </p>
+                </div>
               </div>}
             </div>
 

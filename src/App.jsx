@@ -323,6 +323,7 @@ export default function App() {
   const [fraisGestionLocative, setFraisGestionLocative] = useLocalStorage('fraisGestionLocative', 8);
   const [vacanceLocative, setVacanceLocative] = useLocalStorage('vacanceLocative', 5);
   const [tmi, setTmi] = useLocalStorage('tmi', 30);
+  const [anneeRetraite, setAnneeRetraite] = useLocalStorage('anneeRetraite', 2047);
 
   // Paramètres Frais réels (défiscalisation salarié)
   const [salaireBrutAnnuel, setSalaireBrutAnnuel] = useLocalStorage('salaireBrutAnnuel', 80000);
@@ -424,6 +425,8 @@ export default function App() {
 
     const fraisReventeTotal = jamaisRevendre ? 0 : (fraisAgenceMontant + impotPlusValue + fraisDiagnostics + travauxRevente) * ratioAchat;
 
+    const anneeDepart = new Date().getFullYear();
+    const ansAvantRetraite = Math.max(0, anneeRetraite - anneeDepart);
     // Revenus locatifs sur la période entre fin de pendularité et revente (ou indéfinie si jamais revendre)
     const dureeLocationAnnees = jamaisRevendre ? Math.max(0, 40 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
     // Loyer brut annuel avec taux d'occupation et inflation, à partir de l'année dureeAnnees
@@ -541,6 +544,7 @@ export default function App() {
 
   const arParSemaineCalcTgv = joursParSemaine;
   const arParSemaineCalc = joursParSemaine - nuitsParSemaine;
+  const ansAvantRetraite = Math.max(0, anneeRetraite - new Date().getFullYear());
 
   const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
   const fmtDec = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -744,6 +748,7 @@ export default function App() {
             <SectionCard title="Économie & Fiscalité" icon={<TrendingUp className="w-3.5 h-3.5" />} accent="amber" storageKey="sectionEconomie" T={T}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Inflation" T={T}><Input step="0.1" value={inflationAnnuelle} onChange={e => setInflationAnnuelle(Number(e.target.value))} suffix="%/an" T={T} /></Field>
+                <Field label="Année retraite" T={T}><Input value={anneeRetraite} onChange={e => setAnneeRetraite(Number(e.target.value))} T={T} /></Field>
               </div>
               <SubGroup label="Frais réels (salarié)" color="amber" T={T} />
               <p className={`text-[10px] -mt-2 ${T.textFaint}`}>Calcul de l'économie d'impôt si tu optes pour les frais réels plutôt que l'abattement forfaitaire 10%.</p>
@@ -1419,19 +1424,18 @@ export default function App() {
                   const jamaisRevendre = dureeDetentionAnnees === 0;
                   const totalAns = jamaisRevendre ? 40 : dureeDetentionAnnees;
 
-                  // La retraite est à an 25. Elle tombe dans la fenêtre si 25 > dureeAnnees et 25 < totalAns
-                  const retraiteVisible = 25 > dureeAnnees && 25 < totalAns;
+                  // La retraite est à ansAvantRetraite ans. Elle tombe dans la fenêtre si elle est après la fin de pendularité et avant la fin totale
+                  const retraiteVisible = ansAvantRetraite > dureeAnnees && ansAvantRetraite < totalAns;
 
                   // Durées des segments
-                  const dureeLocAvantRetr = Math.max(0, Math.min(25, totalAns) - dureeAnnees); // dureeAnnees → min(25, total)
-                  const dureeLocRetr      = retraiteVisible ? Math.max(0, (jamaisRevendre ? 40 : totalAns) - 25) : 0;
-                  // Si retraite n'est pas visible, toute la location va dans Phase 2
+                  const dureeLocAvantRetr = Math.max(0, Math.min(ansAvantRetraite, totalAns) - dureeAnnees);
+                  const dureeLocRetr      = retraiteVisible ? Math.max(0, (jamaisRevendre ? 40 : totalAns) - ansAvantRetraite) : 0;
                   const dureeLocTotal     = !retraiteVisible ? Math.max(0, (jamaisRevendre ? 40 : totalAns) - dureeAnnees) : 0;
 
                   // Années jalons
                   const anneeFinPend  = anneeDepart + dureeAnnees;
                   const anneeFinPret  = anneeDepart + dureeEmpruntAnnees;
-                  const anneeRetraite = anneeDepart + 25;
+                  const anneeRetr     = anneeDepart + ansAvantRetraite;
                   const anneeDeces    = anneeDepart + 40;
                   const anneeRevente  = jamaisRevendre ? null : anneeDepart + dureeDetentionAnnees;
 
@@ -1484,7 +1488,7 @@ export default function App() {
                       ? [{ pct: toePct(dureeEmpruntAnnees), label: String(anneeFinPret), sub: 'Fin prêt', color: 'text-sky-400', align: 'center' }]
                       : []),
                     ...(retraiteVisible
-                      ? [{ pct: toePct(25), label: String(anneeRetraite), sub: 'Retraite', color: 'text-amber-400', align: 'center' }]
+                      ? [{ pct: toePct(ansAvantRetraite), label: String(anneeRetr), sub: 'Retraite', color: 'text-amber-400', align: 'center' }]
                       : []),
                     ...(jamaisRevendre
                       ? [{ pct: 100, label: String(anneeDeces),   sub: 'Succession', color: T.textFaint,        align: 'right' }]
@@ -1580,7 +1584,7 @@ export default function App() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 2 — Location</p>
                     <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
                    {dureeLocation > 0
-                        ? `Pendant ${dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} an${(dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ' (jusqu\'au décès dans 40 ans)' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
+                        ? `Pendant ${dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} an${(dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ` (jusqu'au décès en ${anneeRetraite + 15})` : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
                         : `Aucune période de location avec les paramètres actuels (revente = fin de pendularité).`}
                     </p>
                     {dureeLocation > 0 && <div className="space-y-2">
@@ -1589,7 +1593,7 @@ export default function App() {
                         <span className={`font-black text-emerald-400`}>{formatEuroExact(loyerMoyenMensuel * ratioAchat)} / mois</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} ans{dureeDetentionAnnees === 0 ? ' (jusqu\'au décès dans 40 ans)' : ''}</span>
+                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} ans{dureeDetentionAnnees === 0 ? ` (jusqu'en ${anneeRetraite + 15})` : ''}</span>
                         <span className={`font-black text-emerald-400`}>{formatEuro(achat.revenusLocatifsNets)}</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>

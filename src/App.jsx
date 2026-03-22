@@ -762,7 +762,7 @@ export default function App() {
           <main className="xl:col-span-9 space-y-8">
 
             {/* CARTES RÉSUMÉ */}
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {visibleScenarios.map(s => {
                 const c = SCENARIO_COLORS[s.id];
                 const isBest = s.id === best.id;

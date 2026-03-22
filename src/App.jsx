@@ -1413,6 +1413,78 @@ export default function App() {
                   </p>
                 </div>
 
+                {/* TIMELINE */}
+                {(() => {
+                  const achat = scenarios.find(s => s.id === 'achat');
+                  if (!achat) return null;
+                  const jamaisRevendre = dureeDetentionAnnees === 0;
+                  const dureeLocation = jamaisRevendre ? Math.max(0, 25 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
+                  const totalAns = jamaisRevendre ? 25 : dureeDetentionAnnees;
+                  const pctPend = totalAns > 0 ? (dureeAnnees / totalAns) * 100 : 100;
+                  const pctLoc  = totalAns > 0 ? (dureeLocation / totalAns) * 100 : 0;
+
+                  // Jalons : fin prêt (si dans la fenêtre), fin pendularité, fin location/revente
+                  const milestones = [];
+                  if (dureeEmpruntAnnees < totalAns && dureeEmpruntAnnees !== dureeAnnees) {
+                    milestones.push({ pct: (dureeEmpruntAnnees / totalAns) * 100, label: `Fin prêt`, sublabel: `an ${dureeEmpruntAnnees}`, color: 'text-sky-400', dot: 'bg-sky-400' });
+                  }
+
+                  const segments = [
+                    { label: 'Phase 1', sublabel: `Pendularité · ${dureeAnnees} an${dureeAnnees > 1 ? 's' : ''}`, pct: pctPend, color: T.isDark ? 'bg-emerald-700' : 'bg-emerald-500', textColor: 'text-white' },
+                    ...(dureeLocation > 0 ? [{ label: 'Phase 2', sublabel: `Location · ${dureeLocation} an${dureeLocation > 1 ? 's' : ''}`, pct: pctLoc, color: T.isDark ? 'bg-emerald-500' : 'bg-emerald-400', textColor: 'text-white' }] : []),
+                    ...(jamaisRevendre ? [] : [{ label: 'Phase 3', sublabel: 'Revente', pct: 0, color: 'bg-emerald-300', textColor: 'text-emerald-900' }]),
+                  ];
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Barre */}
+                      <div className="relative flex rounded-xl overflow-hidden h-12" style={{ gap: '2px' }}>
+                        {segments.filter(s => s.pct > 0 || s.label === 'Phase 3').map((seg, i) => (
+                          <div
+                            key={i}
+                            className={`relative flex items-center justify-center ${seg.color} transition-all duration-300`}
+                            style={{ width: seg.pct > 0 ? `${seg.pct}%` : '8px', minWidth: seg.pct > 0 ? '60px' : '8px', flexShrink: seg.pct > 0 ? 0 : 0 }}
+                          >
+                            {seg.pct > 8 && (
+                              <div className={`text-center px-1 ${seg.textColor}`}>
+                                <p className="text-[10px] font-black uppercase tracking-wider leading-none">{seg.label}</p>
+                                <p className="text-[9px] font-medium mt-0.5 opacity-80 leading-none">{seg.sublabel}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {/* Jalons */}
+                        {milestones.map((m, i) => (
+                          <div key={i} className="absolute top-0 h-full flex flex-col items-center" style={{ left: `${m.pct}%`, transform: 'translateX(-50%)' }}>
+                            <div className={`w-0.5 h-full ${m.dot} opacity-80`} />
+                          </div>
+                        ))}
+                      </div>
+                      {/* Légende axe temps */}
+                      <div className="relative h-5">
+                        <span className={`absolute left-0 text-[10px] ${T.textFaint}`}>Aujourd'hui</span>
+                        {pctPend > 0 && pctPend < 95 && (
+                          <span className={`absolute text-[10px] font-bold text-emerald-400`} style={{ left: `${pctPend}%`, transform: 'translateX(-50%)' }}>
+                            an {dureeAnnees}
+                          </span>
+                        )}
+                        {!jamaisRevendre && (
+                          <span className={`absolute right-0 text-[10px] ${T.textFaint}`}>an {dureeDetentionAnnees}</span>
+                        )}
+                        {jamaisRevendre && (
+                          <span className={`absolute right-0 text-[10px] ${T.textFaint}`}>Retraite (an 25)</span>
+                        )}
+                        {/* Jalon fin prêt */}
+                        {milestones.map((m, i) => (
+                          <span key={i} className={`absolute text-[10px] font-bold ${m.color}`} style={{ left: `${m.pct}%`, transform: 'translateX(-50%)' }}>
+                            {m.label} (an {dureeEmpruntAnnees})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(() => {
                     const achat = scenarios.find(s => s.id === 'achat');

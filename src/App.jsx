@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Home, Train, Building, Bed, Calculator, Info, TrendingUp, Utensils, BarChart3, ShieldCheck, ChevronDown, Sun, Moon } from 'lucide-react';
+import { Home, Train, Building, Bed, Calculator, Info, TrendingUp, Utensils, BarChart3, ShieldCheck, ChevronDown, Sun, Moon, ExternalLink } from 'lucide-react';
 
 function useLocalStorage(key, defaultValue) {
   const [value, setValue] = useState(() => {
@@ -693,6 +693,10 @@ export default function App() {
             </SectionCard>
 
             <SectionCard title="Achat" icon={<ShieldCheck className="w-3.5 h-3.5" />} accent="emerald" storageKey="sectionAchat" T={T}>
+              <a href="https://www.seloger.com/classified-search?distributionTypes=Buy&energyCertificate=A,B,C,D&estateTypes=Apartment&locations=eyJwbGFjZUlkcyI6WyJTVFJURlIxNDMwIl0sImR1cmF0aW9uIjoiMjAiLCJtb2RlIjoiVHJhbnNpdCJ9&numberOfRoomsMax=2&priceMax=210000&priceMin=170000&projectTypes=Resale&order=PriceAsc" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 text-[11px] font-medium mb-3 text-emerald-400 hover:text-emerald-300 transition-colors`}>
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                Voir les annonces SeLoger correspondantes
+              </a>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prix" T={T}><Input value={prixAchat} onChange={e => setPrixAchat(Number(e.target.value))} suffix="€" T={T} /></Field>
                 <Field label="Votre part" T={T}><Input value={partAchat} onChange={e => setPartAchat(Number(e.target.value))} suffix="%" T={T} /></Field>

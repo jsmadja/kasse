@@ -1,43 +1,59 @@
 import React, { useState, useMemo } from 'react';
 import { Home, Train, Building, Bed, Euro, Calculator, Info, TrendingUp, Utensils, BarChart3, ShieldCheck } from 'lucide-react';
 
+function useLocalStorage(key, defaultValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored !== null ? JSON.parse(stored) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  });
+  const setStored = (next) => {
+    setValue(next);
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+  };
+  return [value, setStored];
+}
+
 export default function App() {
   // Paramètres Généraux
-  const [dureeAnnees, setDureeAnnees] = useState(10);
-  const [joursParSemaine, setJoursParSemaine] = useState(2);
-  const [semainesParAn, setSemainesParAn] = useState(43);
-  const [nuitsParSemaine, setNuitsParSemaine] = useState(2);
-  const [arParSemaine, setArParSemaine] = useState(1);
+  const [dureeAnnees, setDureeAnnees] = useLocalStorage('dureeAnnees', 10);
+  const [joursParSemaine, setJoursParSemaine] = useLocalStorage('joursParSemaine', 2);
+  const [semainesParAn, setSemainesParAn] = useLocalStorage('semainesParAn', 43);
+  const [nuitsParSemaine, setNuitsParSemaine] = useLocalStorage('nuitsParSemaine', 2);
+  const [arParSemaine, setArParSemaine] = useLocalStorage('arParSemaine', 1);
 
   // Paramètres Transport
-  const [abonnementTgvMensuel, setAbonnementTgvMensuel] = useState(435);
-  const [abonnementCarteLiberteAnnuel, setAbonnementCarteLiberteAnnuel] = useState(600);
-  const [prixBilletCarteLiberte, setPrixBilletCarteLiberte] = useState(40);
+  const [abonnementTgvMensuel, setAbonnementTgvMensuel] = useLocalStorage('abonnementTgvMensuel', 435);
+  const [abonnementCarteLiberteAnnuel, setAbonnementCarteLiberteAnnuel] = useLocalStorage('abonnementCarteLiberteAnnuel', 600);
+  const [prixBilletCarteLiberte, setPrixBilletCarteLiberte] = useLocalStorage('prixBilletCarteLiberte', 40);
 
   // Paramètres Logement
-  const [prixNuitHotel, setPrixNuitHotel] = useState(130);
-  const [loyerMensuel, setLoyerMensuel] = useState(700);
+  const [prixNuitHotel, setPrixNuitHotel] = useLocalStorage('prixNuitHotel', 130);
+  const [loyerMensuel, setLoyerMensuel] = useLocalStorage('loyerMensuel', 700);
 
   // Paramètres Achat
-  const [prixAchat, setPrixAchat] = useState(200000);
-  const [partAchat, setPartAchat] = useState(50);
-  const [apport, setApport] = useState(100000);
-  const [fraisNotairePourcent, setFraisNotairePourcent] = useState(8);
-  const [tauxEmprunt, setTauxEmprunt] = useState(3.5);
-  const [dureeEmpruntAnnees, setDureeEmpruntAnnees] = useState(20);
-  const [chargesAnnuellesAchat, setChargesAnnuellesAchat] = useState(1000);
+  const [prixAchat, setPrixAchat] = useLocalStorage('prixAchat', 200000);
+  const [partAchat, setPartAchat] = useLocalStorage('partAchat', 50);
+  const [apport, setApport] = useLocalStorage('apport', 100000);
+  const [fraisNotairePourcent, setFraisNotairePourcent] = useLocalStorage('fraisNotairePourcent', 8);
+  const [tauxEmprunt, setTauxEmprunt] = useLocalStorage('tauxEmprunt', 3.5);
+  const [dureeEmpruntAnnees, setDureeEmpruntAnnees] = useLocalStorage('dureeEmpruntAnnees', 20);
+  const [chargesAnnuellesAchat, setChargesAnnuellesAchat] = useLocalStorage('chargesAnnuellesAchat', 1000);
 
   // Paramètres Vie & Annexes
-  const [passLocalMensuel, setPassLocalMensuel] = useState(86); 
-  const [budgetRepasHotelJour, setBudgetRepasHotelJour] = useState(5);
-  const [budgetRepasAppartJour, setBudgetRepasAppartJour] = useState(5);
-  const [taxeHabitationAnnuelle, setTaxeHabitationAnnuelle] = useState(500);
-  const [chargesAnnexesMensuelles, setChargesAnnexesMensuelles] = useState(100); 
+  const [passLocalMensuel, setPassLocalMensuel] = useLocalStorage('passLocalMensuel', 86);
+  const [budgetRepasHotelJour, setBudgetRepasHotelJour] = useLocalStorage('budgetRepasHotelJour', 5);
+  const [budgetRepasAppartJour, setBudgetRepasAppartJour] = useLocalStorage('budgetRepasAppartJour', 5);
+  const [taxeHabitationAnnuelle, setTaxeHabitationAnnuelle] = useLocalStorage('taxeHabitationAnnuelle', 500);
+  const [chargesAnnexesMensuelles, setChargesAnnexesMensuelles] = useLocalStorage('chargesAnnexesMensuelles', 100);
 
   // Paramètres Économiques
-  const [inflationAnnuelle, setInflationAnnuelle] = useState(2);
-  const [plusValueAnnuelle, setPlusValueAnnuelle] = useState(1);
-  const [fraisInstallation, setFraisInstallation] = useState(3000);
+  const [inflationAnnuelle, setInflationAnnuelle] = useLocalStorage('inflationAnnuelle', 2);
+  const [plusValueAnnuelle, setPlusValueAnnuelle] = useLocalStorage('plusValueAnnuelle', 1);
+  const [fraisInstallation, setFraisInstallation] = useLocalStorage('fraisInstallation', 3000);
 
   // Fonction pour calculer une somme avec inflation
   const calculerTotalInflate = (montantAnnuel, annees, taux) => {

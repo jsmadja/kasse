@@ -326,7 +326,7 @@ export default function App() {
 
   // Paramètres Frais réels (défiscalisation salarié)
   const [salaireBrutAnnuel, setSalaireBrutAnnuel] = useLocalStorage('salaireBrutAnnuel', 80000);
-  const [fraisReelsActifs, setFraisReelsActifs] = useLocalStorage('fraisReelsActifs', true);
+  const [doubleResidenceDeductible, setDoubleResidenceDeductible] = useLocalStorage('doubleResidenceDeductible', true);
 
   const calculerTotalInflate = (montantAnnuel, annees, taux) => {
     let total = 0;
@@ -510,11 +510,11 @@ export default function App() {
     };
 
     const fraisReelsMap = {
-      'tgv':         calcFraisReels(tgvAboAn + navigoAn,               0,          0),
-      'tgv-liberte': calcFraisReels(liberteAboAn + liberteBilletsAn + navigoAn, 0, 0),
-      'hotel':       calcFraisReels(tgvAboAn + navigoAn,               hotelAn,    repasHotelAn),
-      'location':    calcFraisReels(tgvAboAn + navigoAn,               loyerAn,    repasAppartAn),
-      'achat':       calcFraisReels(tgvAboAn + navigoAn,               mensualitesAn, repasAppartAn),
+      'tgv':         calcFraisReels(tgvAboAn + navigoAn,               0,                                      0),
+      'tgv-liberte': calcFraisReels(liberteAboAn + liberteBilletsAn + navigoAn, 0,                             0),
+      'hotel':       calcFraisReels(tgvAboAn + navigoAn,               doubleResidenceDeductible ? hotelAn : 0,      repasHotelAn),
+      'location':    calcFraisReels(tgvAboAn + navigoAn,               doubleResidenceDeductible ? loyerAn : 0,      repasAppartAn),
+      'achat':       calcFraisReels(tgvAboAn + navigoAn,               doubleResidenceDeductible ? mensualitesAn : 0, repasAppartAn),
     };
 
     return [
@@ -531,7 +531,7 @@ export default function App() {
     passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationLocationAnnuelle, taxeHabitationAchatAnnuelle, chargesAnnexesLocationMensuelles, chargesAnnexesAchatMensuelles,
     inflationAnnuelle, plusValueAnnuelle, fraisInstallation, fraisAgenceRevente, fraisDiagnostics, travauxAchat, travauxRevente, dureeDetentionAnnees,
     loyerPercuMensuel, assurancePNOMensuelle, fraisGestionLocative, vacanceLocative, tmi,
-    salaireBrutAnnuel,
+    salaireBrutAnnuel, doubleResidenceDeductible,
   ]);
 
   const arParSemaineCalc = joursParSemaine - nuitsParSemaine;
@@ -730,6 +730,19 @@ export default function App() {
                 <Field label="TMI" tooltip="Taux Marginal d'Imposition : le taux auquel est imposé le dernier euro de tes revenus. Tranches 2024 : 0%, 11%, 30%, 41%, 45%. Utilisé pour calculer l'impôt sur les revenus locatifs et l'économie liée aux frais réels." T={T}>
                   <Select value={tmi} onChange={e => setTmi(Number(e.target.value))} options={[0, 11, 30, 41, 45].map(v => ({ value: v, label: `${v} %` }))} T={T} />
                 </Field>
+              </div>
+              <div className={`flex items-center justify-between rounded-lg px-3 py-2 mt-1 ${T.rowAlt}`}>
+                <div className="flex flex-col gap-0.5">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${T.label}`}>Double résidence déductible</span>
+                  <span className={`text-[10px] ${T.textFaint}`}>Loyer / hôtel / mensualités inclus dans les frais réels</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDoubleResidenceDeductible(v => !v)}
+                  className={`relative flex-shrink-0 w-10 h-5 rounded-full transition-colors ${doubleResidenceDeductible ? 'bg-amber-500' : (T.isDark ? 'bg-slate-700' : 'bg-slate-300')}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full shadow transition-transform ${doubleResidenceDeductible ? 'translate-x-5 bg-white' : 'translate-x-0.5 bg-white'}`} />
+                </button>
               </div>
             </SectionCard>
 
@@ -1297,8 +1310,17 @@ export default function App() {
                         {visibleScenarios.map(s => <td key={`frt-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{formatEuroExact(s.fraisReels.transportAn)}</td>)}
                       </tr>
                       <tr>
-                        <td className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Double résidence / an</td>
-                        {visibleScenarios.map(s => <td key={`frh-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.fraisReels.hebergementAn > 0 ? formatEuroExact(s.fraisReels.hebergementAn) : <span className={T.textFaintest}>—</span>}</td>)}
+                        <td className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>
+                          Double résidence / an
+                          {!doubleResidenceDeductible && <span className={`ml-2 normal-case font-normal ${T.isDark ? 'text-amber-500/70' : 'text-amber-600/80'}`}>(désactivé)</span>}
+                        </td>
+                        {visibleScenarios.map(s => (
+                          <td key={`frh-${s.id}`} className={`px-4 py-2 text-center text-xs`}>
+                            {!doubleResidenceDeductible
+                              ? <span className={T.textFaintest}>—</span>
+                              : s.fraisReels.hebergementAn > 0 ? formatEuroExact(s.fraisReels.hebergementAn) : <span className={T.textFaintest}>—</span>}
+                          </td>
+                        ))}
                       </tr>
                       <tr className={T.rowAmber}>
                         <td className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Repas déductibles / an</td>

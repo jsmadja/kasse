@@ -1322,7 +1322,7 @@ export default function App() {
                         })}
                       </tr>
                       <tr className={`border-t-2 ${T.rowTotal}`}>
-                        <td className={`px-4 py-4 text-xs font-black uppercase tracking-widest text-amber-400`}>Économie d'impôt / an (TMI {tmi}%)</td>
+                        <td className={`px-4 py-4 font-medium text-amber-400`}>Économie d'impôt / an (TMI {tmi}%)</td>
                         {visibleScenarios.map(s => {
                           const c = SCENARIO_COLORS[s.id];
                           return <td key={`freco-${s.id}`} className={`px-4 py-4 text-center text-xl font-black ${s.fraisReels.economieAn > 0 ? 'text-amber-400' : T.textFaintest}`}>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Home, Train, Building, Bed, Calculator, Info, TrendingUp, Utensils, BarChart3, ShieldCheck, ChevronDown, Sun, Moon, ExternalLink } from 'lucide-react';
+import { Home, Train, Bed, Calculator, Info, TrendingUp, Utensils, BarChart3, ShieldCheck, ChevronDown, Sun, Moon, ExternalLink } from 'lucide-react';
 
 function useLocalStorage(key, defaultValue) {
   const [value, setValue] = useState(() => {
@@ -186,7 +186,6 @@ const SCENARIO_COLORS_DARK = {
   tgv:        { bg: 'bg-sky-500',    text: 'text-sky-400',    light: 'bg-sky-900/40',    border: 'border-sky-700',   badge: 'bg-sky-900 text-sky-300' },
   'tgv-liberte': { bg: 'bg-teal-500', text: 'text-teal-400', light: 'bg-teal-900/40',   border: 'border-teal-700',  badge: 'bg-teal-900 text-teal-300' },
   hotel:      { bg: 'bg-orange-500', text: 'text-orange-400', light: 'bg-orange-900/40', border: 'border-orange-700',badge: 'bg-orange-900 text-orange-300' },
-  location:   { bg: 'bg-purple-500', text: 'text-purple-400', light: 'bg-purple-900/40', border: 'border-purple-700',badge: 'bg-purple-900 text-purple-300' },
   achat:      { bg: 'bg-emerald-500',text: 'text-emerald-400',light: 'bg-emerald-900/40',border: 'border-emerald-700',badge: 'bg-emerald-900 text-emerald-300' },
 };
 
@@ -194,7 +193,6 @@ const SCENARIO_COLORS_LIGHT = {
   tgv:        { bg: 'bg-sky-500',    text: 'text-sky-700',    light: 'bg-sky-50',    border: 'border-sky-300',   badge: 'bg-sky-100 text-sky-700' },
   'tgv-liberte': { bg: 'bg-teal-500', text: 'text-teal-700', light: 'bg-teal-50',   border: 'border-teal-300',  badge: 'bg-teal-100 text-teal-700' },
   hotel:      { bg: 'bg-orange-500', text: 'text-orange-700', light: 'bg-orange-50', border: 'border-orange-300',badge: 'bg-orange-100 text-orange-700' },
-  location:   { bg: 'bg-purple-500', text: 'text-purple-700', light: 'bg-purple-50', border: 'border-purple-300',badge: 'bg-purple-100 text-purple-700' },
   achat:      { bg: 'bg-emerald-500',text: 'text-emerald-700',light: 'bg-emerald-50',border: 'border-emerald-300',badge: 'bg-emerald-100 text-emerald-700' },
 };
 
@@ -287,7 +285,6 @@ export default function App() {
 
   // Paramètres Logement
   const [prixNuitHotel, setPrixNuitHotel] = useLocalStorage('prixNuitHotel', 130);
-  const [loyerMensuel, setLoyerMensuel] = useLocalStorage('loyerMensuel', 700);
 
   // Paramètres Achat
   const [prixAchat, setPrixAchat] = useLocalStorage('prixAchat', 200000);
@@ -302,15 +299,12 @@ export default function App() {
   const [passLocalMensuel, setPassLocalMensuel] = useLocalStorage('passLocalMensuel', 86);
   const [budgetRepasHotelJour, setBudgetRepasHotelJour] = useLocalStorage('budgetRepasHotelJour', 5);
   const [budgetRepasAppartJour, setBudgetRepasAppartJour] = useLocalStorage('budgetRepasAppartJour', 5);
-  const [taxeHabitationLocationAnnuelle, setTaxeHabitationLocationAnnuelle] = useLocalStorage('taxeHabitationLocationAnnuelle', 500);
   const [taxeHabitationAchatAnnuelle, setTaxeHabitationAchatAnnuelle] = useLocalStorage('taxeHabitationAchatAnnuelle', 500);
-  const [chargesAnnexesLocationMensuelles, setChargesAnnexesLocationMensuelles] = useLocalStorage('chargesAnnexesLocationMensuelles', 100);
   const [chargesAnnexesAchatMensuelles, setChargesAnnexesAchatMensuelles] = useLocalStorage('chargesAnnexesAchatMensuelles', 100);
 
   // Paramètres Économiques
   const [inflationAnnuelle, setInflationAnnuelle] = useLocalStorage('inflationAnnuelle', 2);
   const [plusValueAnnuelle, setPlusValueAnnuelle] = useLocalStorage('plusValueAnnuelle', 1);
-  const [fraisInstallation, setFraisInstallation] = useLocalStorage('fraisInstallation', 3000);
   const [fraisAgenceRevente, setFraisAgenceRevente] = useLocalStorage('fraisAgenceRevente', 5);
   const [fraisDiagnostics, setFraisDiagnostics] = useLocalStorage('fraisDiagnostics', 1000);
   const [travauxAchat, setTravauxAchat] = useLocalStorage('travauxAchat', 0);
@@ -345,15 +339,13 @@ export default function App() {
     const inf = inflationAnnuelle;
 
     const coutNavigoTotal = calculerTotalInflate(passLocalMensuel * 12, dureeAnnees, inf);
-    const chargesVieTotaleLocation = calculerTotalInflate(chargesAnnexesLocationMensuelles * 12, dureeAnnees, inf);
     const chargesVieTotaleAchat = calculerTotalInflate(chargesAnnexesAchatMensuelles * 12, dureeAnnees, inf);
-    const taxesTotalesLocation = calculerTotalInflate(taxeHabitationLocationAnnuelle, dureeAnnees, inf);
     const taxesTotalesAchat = calculerTotalInflate(taxeHabitationAchatAnnuelle, dureeAnnees, inf);
 
     const coutTgvQuotidien = calculerTotalInflate(abonnementTgvMensuel * 12, dureeAnnees, inf);
     // TGV : rentre chaque soir → autant d'A/R que de jours à Paris
     const arParSemaineTgv = joursParSemaine;
-    // Hôtel / Location / Achat : ne rentre pas les nuits sur place
+    // Hôtel / Achat : ne rentre pas les nuits sur place
     const arParSemaine = joursParSemaine - nuitsParSemaine;
 
     const trajetsParAnTgv = arParSemaineTgv * 2 * semainesParAn;
@@ -367,7 +359,6 @@ export default function App() {
     const coutHotelTotal = calculerTotalInflate(prixNuitHotel * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
     const repasHotelTotal = calculerTotalInflate(budgetRepasHotelJour * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
 
-    const coutLocationTotal = calculerTotalInflate(loyerMensuel * 12, dureeAnnees, inf);
     const repasAppartTotal = calculerTotalInflate(budgetRepasAppartJour * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
 
     const fraisNotaireTotal = prixAchat * (fraisNotairePourcent / 100);
@@ -384,7 +375,6 @@ export default function App() {
     const chargesProprioPart = totalChargesProprio * ratioAchat;
     const chargesViePart = chargesVieTotaleAchat * ratioAchat;
     const taxesPart = taxesTotalesAchat * ratioAchat;
-    const installationPart = fraisInstallation * ratioAchat;
     const travauxAchatPart = travauxAchat * ratioAchat;
     const apportPart = apport * ratioAchat;
     const notairePart = fraisNotaireTotal * ratioAchat;
@@ -495,7 +485,6 @@ export default function App() {
 
     // Hébergement déductible (double résidence)
     const hotelAn = prixNuitHotel * nuitsParSemaine * semainesParAn;
-    const loyerAn = loyerMensuel * 12;
     const fraisNotaireCalc = prixAchat * (fraisNotairePourcent / 100);
     const montantEmprunteCalc = prixAchat + fraisNotaireCalc - apport;
     const rMensuelCalc = (tauxEmprunt / 100) / 12;
@@ -521,7 +510,6 @@ export default function App() {
       'tgv':         calcFraisReels(tgvAboAn + navigoAn,               0,                                      0),
       'tgv-liberte': calcFraisReels(liberteAboAn + liberteBilletsAn + navigoAn, 0,                             0),
       'hotel':       calcFraisReels(tgvAboAn + navigoAn,               doubleResidenceDeductible ? hotelAn : 0,      repasHotelAn),
-      'location':    calcFraisReels(tgvAboAn + navigoAn,               doubleResidenceDeductible ? loyerAn : 0,      repasAppartAn),
       'achat':       calcFraisReels(tgvAboAn + navigoAn,               doubleResidenceDeductible ? mensualitesAn : 0, repasAppartAn),
     };
 
@@ -529,15 +517,14 @@ export default function App() {
       createScenario('tgv',         'TGV Quotidien (MAX ACTIF)',    <Train className="w-4 h-4" />, 'sky',     coutTgvQuotidien,              0,                                                            coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, "Abonnement illimité (max 250 trajets).", trajetsParAnTgv),
       createScenario('tgv-liberte', 'TGV Quotidien (Carte Liberté)',<Train className="w-4 h-4" />, 'teal',    coutCarteLiberteAbonnement,    calculerTotalInflate(coutCarteLiberteTrajetParAn, dureeAnnees, inf), coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, `Abo. ${abonnementCarteLiberteAnnuel}€/an + ${prixBilletCarteLiberte}€/trajet.`, trajetsParAnTgv),
       createScenario('hotel',       'Hôtel',                        <Bed className="w-4 h-4" />,   'orange',  coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutHotelTotal, 0, 0, 0, 0, repasHotelTotal, 0, 0, "A/R hebdo + Hôtel.", trajetsParAnHebdo, nuitsParSemaine > 0),
-      createScenario('location',    'Location',                     <Building className="w-4 h-4" />,'purple', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutLocationTotal, 0, chargesVieTotaleLocation, taxesTotalesLocation, fraisInstallation, repasAppartTotal, 0, 0, "Loyer + A/R hebdo.", trajetsParAnHebdo, nuitsParSemaine > 0),
-      createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, installationPart, repasAppartTotal, notairePart + travauxAchatPart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo, nuitsParSemaine > 0),
+      createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, 0, repasAppartTotal, notairePart + travauxAchatPart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo, nuitsParSemaine > 0),
     ].map(s => ({ ...s, fraisReels: fraisReelsMap[s.id] }));
   }, [
     dureeAnnees, joursParSemaine, semainesParAn, nuitsParSemaine,
-    abonnementTgvMensuel, abonnementCarteLiberteAnnuel, prixBilletCarteLiberte, prixNuitHotel, loyerMensuel,
+    abonnementTgvMensuel, abonnementCarteLiberteAnnuel, prixBilletCarteLiberte, prixNuitHotel,
     prixAchat, partAchat, apport, fraisNotairePourcent, tauxEmprunt, dureeEmpruntAnnees, chargesAnnuellesAchat,
-    passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationLocationAnnuelle, taxeHabitationAchatAnnuelle, chargesAnnexesLocationMensuelles, chargesAnnexesAchatMensuelles,
-    inflationAnnuelle, plusValueAnnuelle, fraisInstallation, fraisAgenceRevente, fraisDiagnostics, travauxAchat, travauxRevente, dureeDetentionAnnees,
+    passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationAchatAnnuelle, chargesAnnexesAchatMensuelles,
+    inflationAnnuelle, plusValueAnnuelle, fraisAgenceRevente, fraisDiagnostics, travauxAchat, travauxRevente, dureeDetentionAnnees,
     loyerPercuMensuel, assurancePNOMensuelle, fraisGestionLocative, vacanceLocative, tmi,
     salaireBrutAnnuel, doubleResidenceDeductible,
   ]);
@@ -663,7 +650,7 @@ export default function App() {
                 </div>
                 {nuitsParSemaine > 0 && (
                   <div className={`mt-1 rounded-lg px-3 py-2 text-[11px] flex items-center justify-between ${T.rowAlt}`}>
-                    <span className={T.textFaint}>A/R Hôtel / Location / Achat / sem (calculé)</span>
+                    <span className={T.textFaint}>A/R Hôtel / Achat / sem (calculé)</span>
                     <span className={`font-black text-indigo-400`}>{arParSemaineCalc} A/R</span>
                   </div>
                 )}
@@ -686,13 +673,9 @@ export default function App() {
                 <Field label="Nuit" T={T}><Input value={prixNuitHotel} onChange={e => setPrixNuitHotel(Number(e.target.value))} suffix="€/j" T={T} /></Field>
                 <Field label="Repas" T={T}><Input value={budgetRepasHotelJour} onChange={e => setBudgetRepasHotelJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
               </div>
-              <SubGroup label="Location" color="purple" T={T} />
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Loyer" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+              <SubGroup label="Achat" color="emerald" T={T} />
+              <div className="grid grid-cols-1 gap-3">
                 <Field label="Repas" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
-                <Field label="Élec / Assur" T={T}><Input value={chargesAnnexesLocationMensuelles} onChange={e => setChargesAnnexesLocationMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
-                <Field label="Taxe Hab / Fonc" tooltip="Taxe d'habitation (si applicable) et taxe foncière annuelle sur le logement parisien." T={T}><Input value={taxeHabitationLocationAnnuelle} onChange={e => setTaxeHabitationLocationAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
-                <Field label="Frais installation" T={T}><Input value={fraisInstallation} onChange={e => setFraisInstallation(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
             </SectionCard>
 

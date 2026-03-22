@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Home, Train, Building, Bed, Calculator, Info, TrendingUp, Utensils, BarChart3, ShieldCheck, ChevronDown, Sun, Moon } from 'lucide-react';
 
 function useLocalStorage(key, defaultValue) {
@@ -22,24 +23,58 @@ function useLocalStorage(key, defaultValue) {
 
 function Tooltip({ text, T }) {
   const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+
+  const show = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.top + window.scrollY, left: r.left + window.scrollX });
+    }
+    setVisible(true);
+  };
+  const hide = () => setVisible(false);
+
+  // Fermer si scroll ou resize
+  useEffect(() => {
+    if (!visible) return;
+    const close = () => setVisible(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [visible]);
+
+  const TOOLTIP_W = 224; // w-56 = 14rem = 224px
+  // On calcule la position après rendu en utilisant la ref du bouton
+  // La bulle apparaît à gauche du bouton si elle dépasse à droite, sinon à droite
+  const leftPos = pos.left + 8; // légèrement à droite du bouton par défaut
+  const adjustedLeft = Math.min(leftPos, window.innerWidth - TOOLTIP_W - 12);
+
   return (
     <span className="relative inline-flex items-center">
       <button
+        ref={btnRef}
         type="button"
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        onFocus={() => setVisible(true)}
-        onBlur={() => setVisible(false)}
-        onClick={() => setVisible(v => !v)}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+        onClick={() => visible ? hide() : show()}
         className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 transition ${T.isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
       >
         <Info className="w-3.5 h-3.5" />
       </button>
-      {visible && (
-        <span className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-lg px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none ${T.isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-white text-slate-700 border border-slate-200'}`}>
+      {visible && ReactDOM.createPortal(
+        <span
+          style={{ position: 'absolute', top: pos.top - 8, left: adjustedLeft, transform: 'translateY(-100%)', width: TOOLTIP_W }}
+          className={`z-[9999] rounded-lg px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none ${T.isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-white text-slate-700 border border-slate-200'}`}
+        >
           {text}
-          <span className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent ${T.isDark ? 'border-t-slate-700' : 'border-t-white'}`} />
-        </span>
+        </span>,
+        document.body
       )}
     </span>
   );

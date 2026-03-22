@@ -11,8 +11,11 @@ function useLocalStorage(key, defaultValue) {
     }
   });
   const setStored = (next) => {
-    setValue(next);
-    try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+    setValue(prev => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      try { localStorage.setItem(key, JSON.stringify(resolved)); } catch {}
+      return resolved;
+    });
   };
   return [value, setStored];
 }
@@ -52,8 +55,8 @@ function Input({ value, onChange, step, T }) {
   );
 }
 
-function SectionCard({ title, icon, accent = 'indigo', children, defaultOpen = true, T }) {
-  const [open, setOpen] = useState(defaultOpen);
+function SectionCard({ title, icon, accent = 'indigo', children, defaultOpen = true, storageKey, T }) {
+  const [open, setOpen] = storageKey ? useLocalStorage(storageKey, defaultOpen) : useState(defaultOpen);
   const accents = {
     indigo: 'text-indigo-400',
     sky:    'text-sky-400',
@@ -199,7 +202,6 @@ export default function App() {
   const [joursParSemaine, setJoursParSemaine] = useLocalStorage('joursParSemaine', 2);
   const [semainesParAn, setSemainesParAn] = useLocalStorage('semainesParAn', 43);
   const [nuitsParSemaine, setNuitsParSemaine] = useLocalStorage('nuitsParSemaine', 2);
-  const [arParSemaine, setArParSemaine] = useLocalStorage('arParSemaine', 1);
 
   // Paramètres Transport
   const [abonnementTgvMensuel, setAbonnementTgvMensuel] = useLocalStorage('abonnementTgvMensuel', 435);
@@ -251,7 +253,9 @@ export default function App() {
     const taxesTotales = calculerTotalInflate(taxeHabitationAnnuelle, dureeAnnees, inf);
 
     const coutTgvQuotidien = calculerTotalInflate(abonnementTgvMensuel * 12, dureeAnnees, inf);
-    const trajetsParAnTgv = joursParSemaine * 2 * semainesParAn;
+    const arParSemaine = joursParSemaine - nuitsParSemaine;
+
+    const trajetsParAnTgv = arParSemaine * 2 * semainesParAn;
 
     const coutCarteLiberteAbonnement = calculerTotalInflate(abonnementCarteLiberteAnnuel, dureeAnnees, inf);
     const coutCarteLiberteTrajetParAn = prixBilletCarteLiberte * trajetsParAnTgv;
@@ -260,7 +264,7 @@ export default function App() {
     const coutTransportHotelTotal = calculerTotalInflate(abonnementTgvMensuel * 12, dureeAnnees, inf);
     const coutHotelTotal = calculerTotalInflate(prixNuitHotel * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
     const repasHotelTotal = calculerTotalInflate(budgetRepasHotelJour * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
-    const trajetsParAnHebdo = arParSemaine * 2 * semainesParAn;
+    const trajetsParAnHebdo = trajetsParAnTgv;
 
     const coutLocationTotal = calculerTotalInflate(loyerMensuel * 12, dureeAnnees, inf);
     const repasAppartTotal = calculerTotalInflate(budgetRepasAppartJour * nuitsParSemaine * semainesParAn, dureeAnnees, inf);
@@ -286,7 +290,7 @@ export default function App() {
     const prixReventeFinal = prixAchat * Math.pow(1 + plusValueAnnuelle / 100, dureeAnnees);
     const capitalRecuperePart = (prixReventeFinal - capitalRestantDu) * ratioAchat;
 
-    const createScenario = (id, title, icon, color, transportAbonnement, transportBillets, transportNavigo, base, chargesP, chargesV, tax, inst, food, notaire, app, desc, trajets) => {
+    const createScenario = (id, title, icon, color, transportAbonnement, transportBillets, transportNavigo, base, chargesP, chargesV, tax, inst, food, notaire, app, desc, trajets, available = true) => {
       const transport = transportAbonnement + transportBillets + transportNavigo;
       const tresorerie = transport + base + chargesP + chargesV + tax + inst + food + notaire + app;
       const coutNet = tresorerie - (id === 'achat' ? capitalRecuperePart : 0);
@@ -294,24 +298,26 @@ export default function App() {
         id, title, icon, color, transport, transportAbonnement, transportBillets, transportNavigo,
         base, chargesP, chargesV, tax, inst, food, notaire, app,
         tresorerie, recuperation: id === 'achat' ? capitalRecuperePart : 0,
-        coutNet, trajetsParAn: trajets, desc
+        coutNet, trajetsParAn: trajets, desc, available
       };
     };
 
     return [
       createScenario('tgv',         'TGV Quotidien (MAX ACTIF)',    <Train className="w-4 h-4" />, 'sky',     coutTgvQuotidien,              0,                                                            coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, "Abonnement illimité (max 250 trajets).", trajetsParAnTgv),
       createScenario('tgv-liberte', 'TGV Quotidien (Carte Liberté)',<Train className="w-4 h-4" />, 'teal',    coutCarteLiberteAbonnement,    calculerTotalInflate(coutCarteLiberteTrajetParAn, dureeAnnees, inf), coutNavigoTotal, 0, 0, 0, 0, 0, 0, 0, 0, `Abo. ${abonnementCarteLiberteAnnuel}€/an + ${prixBilletCarteLiberte}€/trajet.`, trajetsParAnTgv),
-      createScenario('hotel',       'Hôtel',                        <Bed className="w-4 h-4" />,   'orange',  coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutHotelTotal, 0, 0, 0, 0, repasHotelTotal, 0, 0, "A/R hebdo + Hôtel.", trajetsParAnHebdo),
-      createScenario('location',    'Location',                     <Building className="w-4 h-4" />,'purple', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutLocationTotal, 0, chargesVieTotale, taxesTotales, fraisInstallation, repasAppartTotal, 0, 0, "Loyer + A/R hebdo.", trajetsParAnHebdo),
-      createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, installationPart, repasAppartTotal, notairePart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo),
+      createScenario('hotel',       'Hôtel',                        <Bed className="w-4 h-4" />,   'orange',  coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutHotelTotal, 0, 0, 0, 0, repasHotelTotal, 0, 0, "A/R hebdo + Hôtel.", trajetsParAnHebdo, nuitsParSemaine > 0),
+      createScenario('location',    'Location',                     <Building className="w-4 h-4" />,'purple', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, coutLocationTotal, 0, chargesVieTotale, taxesTotales, fraisInstallation, repasAppartTotal, 0, 0, "Loyer + A/R hebdo.", trajetsParAnHebdo, nuitsParSemaine > 0),
+      createScenario('achat',       'Achat',                        <Home className="w-4 h-4" />,  'emerald', coutTransportHotelTotal,       0,                                                            coutNavigoTotal, mensuPart, chargesProprioPart, chargesViePart, taxesPart, installationPart, repasAppartTotal, notairePart, apportPart, `Part ${partAchat}% + Revente.`, trajetsParAnHebdo, nuitsParSemaine > 0),
     ];
   }, [
-    dureeAnnees, joursParSemaine, semainesParAn, nuitsParSemaine, arParSemaine,
+    dureeAnnees, joursParSemaine, semainesParAn, nuitsParSemaine,
     abonnementTgvMensuel, abonnementCarteLiberteAnnuel, prixBilletCarteLiberte, prixNuitHotel, loyerMensuel,
     prixAchat, partAchat, apport, fraisNotairePourcent, tauxEmprunt, dureeEmpruntAnnees, chargesAnnuellesAchat,
     passLocalMensuel, budgetRepasHotelJour, budgetRepasAppartJour, taxeHabitationAnnuelle, chargesAnnexesMensuelles,
     inflationAnnuelle, plusValueAnnuelle, fraisInstallation
   ]);
+
+  const arParSemaineCalc = joursParSemaine - nuitsParSemaine;
 
   const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
   const fmtDec = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -328,10 +334,11 @@ export default function App() {
   const formatEuroExact = (amount) => `${fmt.format(Math.round(amount))} €`;
 
   const [activeIds, setActiveIds] = useState(() => new Set(scenarios.map(s => s.id)));
-  const [chartOpen, setChartOpen] = useState(true);
-  const [detailOpen, setDetailOpen] = useState(true);
-  const [annuelOpen, setAnnuelOpen] = useState(true);
-  const [mensuelOpen, setMensuelOpen] = useState(true);
+  const [chartOpen, setChartOpen] = useLocalStorage('accordionChart', true);
+  const [detailOpen, setDetailOpen] = useLocalStorage('accordionDetail', true);
+  const [annuelOpen, setAnnuelOpen] = useLocalStorage('accordionAnnuel', true);
+  const [mensuelOpen, setMensuelOpen] = useLocalStorage('accordionMensuel', true);
+  const [semaineOpen, setSemaineOpen] = useLocalStorage('accordionSemaine', true);
   const toggleScenario = (id) => {
     setActiveIds(prev => {
       if (prev.size === 1 && prev.has(id)) return prev;
@@ -341,7 +348,7 @@ export default function App() {
     });
   };
 
-  const visibleScenarios = scenarios.filter(s => activeIds.has(s.id));
+  const visibleScenarios = scenarios.filter(s => s.available && activeIds.has(s.id));
   const maxVal = Math.max(...visibleScenarios.map(s => s.tresorerie));
   const best = visibleScenarios.reduce((a, b) => a.coutNet < b.coutNet ? a : b);
 
@@ -364,7 +371,8 @@ export default function App() {
             {scenarios.map(s => {
               const c = SCENARIO_COLORS[s.id];
               const isActive = activeIds.has(s.id);
-              const isBest = isActive && s.id === best.id;
+              const isBest = isActive && s.available && s.id === best.id;
+              if (!s.available) return null;
               return (
                 <button
                   key={s.id}
@@ -400,9 +408,9 @@ export default function App() {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
 
           {/* ── PANNEAU DE CONFIGURATION ── */}
-          <aside className="xl:col-span-3 space-y-4">
+          <aside className="xl:col-span-3 space-y-4 xl:sticky xl:top-20 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
 
-            <SectionCard title="Rythme" icon={<Calculator className="w-3.5 h-3.5" />} accent="indigo" T={T}>
+            <SectionCard title="Rythme" icon={<Calculator className="w-3.5 h-3.5" />} accent="indigo" storageKey="sectionRythme" T={T}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Durée (ans)" T={T}>
                   <Select value={dureeAnnees} onChange={e => setDureeAnnees(Number(e.target.value))} options={[1,2,3,4,5,6,7,8,9,10,12,15,20,25,30].map(v => ({ value: v, label: `${v} ans` }))} T={T} />
@@ -411,15 +419,23 @@ export default function App() {
                   <Select value={semainesParAn} onChange={e => setSemainesParAn(Number(e.target.value))} options={Array.from({length: 52}, (_, i) => i + 1).map(v => ({ value: v, label: `${v} sem.` }))} T={T} />
                 </Field>
                 <Field label="Jours Paris / sem" T={T}>
-                  <Select value={joursParSemaine} onChange={e => setJoursParSemaine(Number(e.target.value))} options={[1,2,3,4,5].map(v => ({ value: v, label: `${v} jour${v > 1 ? 's' : ''}` }))} T={T} />
+                  <Select value={joursParSemaine} onChange={e => {
+                    const jours = Number(e.target.value);
+                    setJoursParSemaine(jours);
+                    if (nuitsParSemaine >= jours) setNuitsParSemaine(jours - 1);
+                  }} options={[1,2,3].map(v => ({ value: v, label: `${v} jour${v > 1 ? 's' : ''}` }))} T={T} />
                 </Field>
                 <Field label="Nuits Paris / sem" T={T}>
-                  <Select value={nuitsParSemaine} onChange={e => setNuitsParSemaine(Number(e.target.value))} options={[0,1,2,3,4,5,6].map(v => ({ value: v, label: v === 0 ? 'Aucune' : `${v} nuit${v > 1 ? 's' : ''}` }))} T={T} />
+                  <Select value={nuitsParSemaine} onChange={e => setNuitsParSemaine(Number(e.target.value))} options={Array.from({length: joursParSemaine}, (_, i) => i).map(v => ({ value: v, label: v === 0 ? 'Aucune' : `${v} nuit${v > 1 ? 's' : ''}` }))} T={T} />
                 </Field>
+              </div>
+              <div className={`mt-1 rounded-lg px-3 py-2 text-[11px] flex items-center justify-between ${T.rowAlt}`}>
+                <span className={T.textFaint}>A/R TGV / semaine (calculé)</span>
+                <span className={`font-black text-indigo-400`}>{arParSemaineCalc} A/R</span>
               </div>
             </SectionCard>
 
-            <SectionCard title="Transport" icon={<Train className="w-3.5 h-3.5" />} accent="sky" T={T}>
+            <SectionCard title="Transport" icon={<Train className="w-3.5 h-3.5" />} accent="sky" storageKey="sectionTransport" T={T}>
               <Field label="Navigo (€ / mois)" T={T}><Input value={passLocalMensuel} onChange={e => setPassLocalMensuel(Number(e.target.value))} T={T} /></Field>
               <SubGroup label="TGV MAX ACTIF" color="sky" T={T} />
               <Field label="Abonnement (€ / mois)" T={T}><Input value={abonnementTgvMensuel} onChange={e => setAbonnementTgvMensuel(Number(e.target.value))} T={T} /></Field>
@@ -430,7 +446,7 @@ export default function App() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Hébergement & Vie" icon={<Utensils className="w-3.5 h-3.5" />} accent="orange" T={T}>
+            <SectionCard title="Hébergement & Vie" icon={<Utensils className="w-3.5 h-3.5" />} accent="orange" storageKey="sectionHebergement" T={T}>
               <SubGroup label="Hôtel" color="orange" T={T} />
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Nuit (€ / j)" T={T}><Input value={prixNuitHotel} onChange={e => setPrixNuitHotel(Number(e.target.value))} T={T} /></Field>
@@ -446,7 +462,7 @@ export default function App() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Achat" icon={<ShieldCheck className="w-3.5 h-3.5" />} accent="emerald" T={T}>
+            <SectionCard title="Achat" icon={<ShieldCheck className="w-3.5 h-3.5" />} accent="emerald" storageKey="sectionAchat" T={T}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prix (€)" T={T}><Input value={prixAchat} onChange={e => setPrixAchat(Number(e.target.value))} T={T} /></Field>
                 <Field label="Votre part (%)" T={T}><Input value={partAchat} onChange={e => setPartAchat(Number(e.target.value))} T={T} /></Field>
@@ -458,7 +474,7 @@ export default function App() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Économie" icon={<TrendingUp className="w-3.5 h-3.5" />} accent="amber" T={T}>
+            <SectionCard title="Économie" icon={<TrendingUp className="w-3.5 h-3.5" />} accent="amber" storageKey="sectionEconomie" T={T}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Inflation / an (%)" T={T}><Input step="0.1" value={inflationAnnuelle} onChange={e => setInflationAnnuelle(Number(e.target.value))} T={T} /></Field>
                 <Field label="Plus-value immo (%)" T={T}><Input step="0.1" value={plusValueAnnuelle} onChange={e => setPlusValueAnnuelle(Number(e.target.value))} T={T} /></Field>
@@ -836,6 +852,91 @@ export default function App() {
                     {visibleScenarios.map(s => {
                       const c = SCENARIO_COLORS[s.id];
                       return <td key={`mcn-${s.id}`} className={`px-4 py-4 text-center text-xl font-black ${c.text}`}>{formatEuroExact(s.coutNet / (dureeAnnees * 12))}</td>;
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+              </div>}
+            </div>
+
+            {/* TABLEAU HEBDOMADAIRE */}
+            <div className={`rounded-2xl border overflow-hidden ${T.card}`}>
+              <button
+                onClick={() => setSemaineOpen(o => !o)}
+                className={`w-full flex items-center justify-between px-6 py-4 transition ${T.cardHover}`}
+              >
+                <span className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 ${T.textPrimary}`}>
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-400" /> Coûts lissés / semaine
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${T.chevron} ${semaineOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {semaineOpen && <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse" style={{ minWidth: '700px' }}>
+                <thead>
+                  <tr className={`border-b ${T.border}`}>
+                    <th className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest ${T.tableHeader}`}></th>
+                    {visibleScenarios.map(s => {
+                      const c = SCENARIO_COLORS[s.id];
+                      return (
+                        <th key={`sw-${s.id}`} className="px-4 py-4 text-center">
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black ${c.badge}`}>
+                            {s.icon} {s.title}
+                          </div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${T.divider} text-sm`}>
+                  <tr className={T.rowAlt}>
+                    <td className={`px-5 py-3 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Trajets TGV / semaine</td>
+                    {visibleScenarios.map(s => <td key={`swtj-${s.id}`} className={`px-4 py-3 text-center font-medium ${T.textSecondary}`}>{Math.round(s.trajetsParAn / semainesParAn)}</td>)}
+                  </tr>
+                  <tr className={T.rowAlt}>
+                    <td className={`px-5 py-3 text-[10px] font-bold uppercase tracking-wider ${T.textFaint}`}>Transport / semaine (total)</td>
+                    {visibleScenarios.map(s => <td key={`swt-${s.id}`} className={`px-4 py-3 text-center font-bold ${T.textSecondary}`}>{formatEuroExact(s.transport / (dureeAnnees * semainesParAn))}</td>)}
+                  </tr>
+                  <tr className={T.rowAlt}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Abonnement TGV</td>
+                    {visibleScenarios.map(s => <td key={`swtab-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.transportAbonnement > 0 ? formatEuroExact(s.transportAbonnement / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowAlt}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Billets (à l'unité)</td>
+                    {visibleScenarios.map(s => <td key={`swtbi-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{s.transportBillets > 0 ? formatEuroExact(s.transportBillets / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowAlt}>
+                    <td className={`px-8 py-2 text-[10px] ${T.textFaint}`}>↳ Navigo</td>
+                    {visibleScenarios.map(s => <td key={`swtnav-${s.id}`} className={`px-4 py-2 text-center text-xs ${T.textMuted}`}>{formatEuroExact(s.transportNavigo / (dureeAnnees * semainesParAn))}</td>)}
+                  </tr>
+                  <tr>
+                    <td className={`px-5 py-3 font-medium ${T.textMuted}`}>Loyer / Mensualités</td>
+                    {visibleScenarios.map(s => <td key={`swb-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.base > 0 ? formatEuroExact(s.base / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowIndigo}>
+                    <td className={`px-5 py-3 font-medium flex items-center gap-1.5 ${T.textMuted}`}>Charges co-pro / entretien <Info className={`w-3 h-3 ${T.infoIcon}`} /></td>
+                    {visibleScenarios.map(s => <td key={`swcp-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.chargesP > 0 ? formatEuroExact(s.chargesP / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowIndigo}>
+                    <td className={`px-5 py-3 font-medium ${T.textMuted}`}>Charges de vie (Élec / Web / Assur)</td>
+                    {visibleScenarios.map(s => <td key={`swcv-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.chargesV > 0 ? formatEuroExact(s.chargesV / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowIndigo}>
+                    <td className={`px-5 py-3 font-medium ${T.textMuted}`}>Taxes (Habitation / Foncière)</td>
+                    {visibleScenarios.map(s => <td key={`swtx-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.tax > 0 ? formatEuroExact(s.tax / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowAmber}>
+                    <td className={`px-5 py-3 font-medium ${T.amberRow}`}>Nourriture sur place</td>
+                    {visibleScenarios.map(s => <td key={`swfd-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.food > 0 ? formatEuroExact(s.food / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={T.rowEmerald}>
+                    <td className={`px-5 py-3 font-medium ${T.emeraldRow}`}>Notaire + Apport (lissé)</td>
+                    {visibleScenarios.map(s => <td key={`swap-${s.id}`} className={`px-4 py-3 text-center ${T.textSecondary}`}>{s.notaire + s.app > 0 ? formatEuroExact((s.notaire + s.app) / (dureeAnnees * semainesParAn)) : <span className={T.textFaintest}>—</span>}</td>)}
+                  </tr>
+                  <tr className={`border-t-2 ${T.rowTotal}`}>
+                    <td className={`px-5 py-4 text-xs font-black uppercase tracking-widest ${T.textPrimary}`}>Coût net / semaine</td>
+                    {visibleScenarios.map(s => {
+                      const c = SCENARIO_COLORS[s.id];
+                      return <td key={`swcn-${s.id}`} className={`px-4 py-4 text-center text-xl font-black ${c.text}`}>{formatEuroExact(s.coutNet / (dureeAnnees * semainesParAn))}</td>;
                     })}
                   </tr>
                 </tbody>

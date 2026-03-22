@@ -425,7 +425,7 @@ export default function App() {
     const fraisReventeTotal = jamaisRevendre ? 0 : (fraisAgenceMontant + impotPlusValue + fraisDiagnostics + travauxRevente) * ratioAchat;
 
     // Revenus locatifs sur la période entre fin de pendularité et revente (ou indéfinie si jamais revendre)
-    const dureeLocationAnnees = jamaisRevendre ? Math.max(0, 25 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
+    const dureeLocationAnnees = jamaisRevendre ? Math.max(0, 40 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
     // Loyer brut annuel avec taux d'occupation et inflation, à partir de l'année dureeAnnees
     let revenusBrutsTotal = 0;
     let assurancePNOTotal = 0;
@@ -718,7 +718,7 @@ export default function App() {
               <SubGroup label="Mise en location" color="teal" T={T} />
               <p className={`text-[10px] -mt-2 ${T.textFaint}`}>
                 {dureeDetentionAnnees === 0
-                  ? `Location indéfinie après la fin de pendularité (${dureeAnnees} ans) — pas de revente prévue, on simule ${Math.max(0, 25 - dureeAnnees)} ans de location (jusqu'à la retraite dans 25 ans).`
+                  ? `Location indéfinie après la fin de pendularité (${dureeAnnees} ans) — pas de revente prévue, on simule ${Math.max(0, 40 - dureeAnnees)} ans de location (jusqu'au décès dans 40 ans).`
                   : dureeDetentionAnnees > dureeAnnees
                     ? `Entre la fin de pendularité (${dureeAnnees} ans) et la revente (${dureeDetentionAnnees} ans) — ${dureeDetentionAnnees - dureeAnnees} an${dureeDetentionAnnees - dureeAnnees > 1 ? 's' : ''} de location.`
                     : `Aucune période de location (revente ≤ fin de pendularité).`}
@@ -1415,71 +1415,123 @@ export default function App() {
 
                 {/* TIMELINE */}
                 {(() => {
-                  const achat = scenarios.find(s => s.id === 'achat');
-                  if (!achat) return null;
+                  const anneeDepart = new Date().getFullYear();
                   const jamaisRevendre = dureeDetentionAnnees === 0;
-                  const dureeLocation = jamaisRevendre ? Math.max(0, 25 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
-                  const totalAns = jamaisRevendre ? 25 : dureeDetentionAnnees;
-                  const pctPend = totalAns > 0 ? (dureeAnnees / totalAns) * 100 : 100;
-                  const pctLoc  = totalAns > 0 ? (dureeLocation / totalAns) * 100 : 0;
 
-                  // Jalons : fin prêt (si dans la fenêtre), fin pendularité, fin location/revente
-                  const milestones = [];
-                  if (dureeEmpruntAnnees < totalAns && dureeEmpruntAnnees !== dureeAnnees) {
-                    milestones.push({ pct: (dureeEmpruntAnnees / totalAns) * 100, label: `Fin prêt`, sublabel: `an ${dureeEmpruntAnnees}`, color: 'text-sky-400', dot: 'bg-sky-400' });
-                  }
+                  // Durées des phases
+                  const dureeLocation       = jamaisRevendre ? Math.max(0, 40 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
+                  const dureeLocationRetrait = jamaisRevendre ? 15 : 0; // 25 → 40 ans (retraite → décès)
+                  const dureeSuccession      = jamaisRevendre ? 0 : 0;  // (pas de phase après revente)
+                  const totalAns = jamaisRevendre ? 40 : dureeDetentionAnnees;
+
+                  // Années jalons
+                  const anneeFinPend    = anneeDepart + dureeAnnees;
+                  const anneeFinPret    = anneeDepart + dureeEmpruntAnnees;
+                  const anneeRetraite   = anneeDepart + 25;
+                  const anneeDeces      = anneeDepart + 40;
+                  const anneeRevente    = jamaisRevendre ? null : anneeDepart + dureeDetentionAnnees;
+
+                  // Calcul des % (Phase 3 Revente = segment fixe 6% si applicable)
+                  const PHASE_REVENTE_PCT = jamaisRevendre ? 0 : 6;
+                  const scale = (ans) => totalAns > 0 ? (ans / totalAns) * (100 - PHASE_REVENTE_PCT) : 0;
+
+                  const pctPend     = scale(dureeAnnees);
+                  const pctLoc      = scale(dureeLocation);
+                  const pctLocRetr  = scale(dureeLocationRetrait);
 
                   const segments = [
-                    { label: 'Phase 1', sublabel: `Pendularité · ${dureeAnnees} an${dureeAnnees > 1 ? 's' : ''}`, pct: pctPend, color: T.isDark ? 'bg-emerald-700' : 'bg-emerald-500', textColor: 'text-white' },
-                    ...(dureeLocation > 0 ? [{ label: 'Phase 2', sublabel: `Location · ${dureeLocation} an${dureeLocation > 1 ? 's' : ''}`, pct: pctLoc, color: T.isDark ? 'bg-emerald-500' : 'bg-emerald-400', textColor: 'text-white' }] : []),
-                    ...(jamaisRevendre ? [] : [{ label: 'Phase 3', sublabel: 'Revente', pct: 0, color: 'bg-emerald-300', textColor: 'text-emerald-900' }]),
+                    {
+                      label: 'Phase 1', sublabel: `Pendularité · ${dureeAnnees} an${dureeAnnees > 1 ? 's' : ''}`,
+                      pct: pctPend,
+                      color: T.isDark ? 'bg-emerald-800' : 'bg-emerald-600',
+                      textColor: 'text-white',
+                    },
+                    ...(dureeLocation > 0 ? [{
+                      label: 'Phase 2', sublabel: `Location · ${dureeLocation} an${dureeLocation > 1 ? 's' : ''}`,
+                      pct: pctLoc,
+                      color: T.isDark ? 'bg-emerald-600' : 'bg-emerald-400',
+                      textColor: 'text-white',
+                    }] : []),
+                    ...(jamaisRevendre && dureeLocationRetrait > 0 ? [{
+                      label: 'Phase 3', sublabel: `Location retraite · ${dureeLocationRetrait} ans`,
+                      pct: pctLocRetr,
+                      color: T.isDark ? 'bg-emerald-500/60' : 'bg-emerald-300',
+                      textColor: T.isDark ? 'text-white' : 'text-emerald-900',
+                    }] : []),
+                    ...(!jamaisRevendre ? [{
+                      label: 'Phase 3', sublabel: 'Revente',
+                      pct: PHASE_REVENTE_PCT,
+                      color: T.isDark ? 'bg-emerald-400' : 'bg-emerald-200',
+                      textColor: T.isDark ? 'text-emerald-950' : 'text-emerald-900',
+                    }] : []),
+                    ...(jamaisRevendre ? [{
+                      label: 'Phase 4', sublabel: 'Succession',
+                      pct: 0, // largeur fixe via minWidth
+                      fixed: true,
+                      color: T.isDark ? 'bg-slate-600' : 'bg-slate-300',
+                      textColor: T.isDark ? 'text-slate-300' : 'text-slate-700',
+                    }] : []),
                   ];
 
+                  // Jalons sous la barre
+                  const toePct = (ans) => totalAns > 0 ? Math.min(98, scale(ans)) : 0;
+
+                  const jalons = [
+                    { pct: 0,                    label: String(anneeDepart),       sub: 'Achat',          color: T.textFaint,          align: 'left' },
+                    { pct: toePct(dureeAnnees),  label: String(anneeFinPend),      sub: 'Début location', color: 'text-emerald-400',   align: 'center' },
+                    ...(dureeEmpruntAnnees !== dureeAnnees && dureeEmpruntAnnees < totalAns
+                      ? [{ pct: toePct(dureeEmpruntAnnees), label: String(anneeFinPret), sub: 'Fin prêt', color: 'text-sky-400', align: 'center' }]
+                      : []),
+                    ...(jamaisRevendre ? [
+                      { pct: toePct(25),         label: String(anneeRetraite),     sub: 'Retraite',       color: 'text-amber-400',     align: 'center' },
+                      { pct: 100,                label: String(anneeDeces),        sub: 'Succession',     color: T.textFaint,          align: 'right' },
+                    ] : [
+                      { pct: 100,                label: String(anneeRevente),      sub: 'Revente',        color: 'text-emerald-400',   align: 'right' },
+                    ]),
+                  ];
+
+                  const jalonsBarre = jalons.filter(j => j.pct > 0 && j.pct < 100);
+
                   return (
-                    <div className="space-y-3">
-                      {/* Barre */}
+                    <div className="space-y-2 select-none">
+                      {/* Barre segmentée */}
                       <div className="relative flex rounded-xl overflow-hidden h-12" style={{ gap: '2px' }}>
-                        {segments.filter(s => s.pct > 0 || s.label === 'Phase 3').map((seg, i) => (
+                        {segments.map((seg, i) => (
                           <div
                             key={i}
                             className={`relative flex items-center justify-center ${seg.color} transition-all duration-300`}
-                            style={{ width: seg.pct > 0 ? `${seg.pct}%` : '8px', minWidth: seg.pct > 0 ? '60px' : '8px', flexShrink: seg.pct > 0 ? 0 : 0 }}
+                            style={seg.fixed
+                              ? { width: '36px', flexShrink: 0 }
+                              : { width: `${seg.pct}%`, minWidth: '8px', flexShrink: 0 }}
                           >
-                            {seg.pct > 8 && (
+                            {(seg.fixed || seg.pct > 10) && (
                               <div className={`text-center px-1 ${seg.textColor}`}>
                                 <p className="text-[10px] font-black uppercase tracking-wider leading-none">{seg.label}</p>
-                                <p className="text-[9px] font-medium mt-0.5 opacity-80 leading-none">{seg.sublabel}</p>
+                                {!seg.fixed && <p className="text-[9px] font-medium mt-0.5 opacity-80 leading-none">{seg.sublabel}</p>}
                               </div>
                             )}
                           </div>
                         ))}
-                        {/* Jalons */}
-                        {milestones.map((m, i) => (
-                          <div key={i} className="absolute top-0 h-full flex flex-col items-center" style={{ left: `${m.pct}%`, transform: 'translateX(-50%)' }}>
-                            <div className={`w-0.5 h-full ${m.dot} opacity-80`} />
-                          </div>
+                        {/* Lignes jalons internes */}
+                        {jalonsBarre.map((j, i) => (
+                          <div key={i} className="absolute top-0 bottom-0 w-px bg-white/30 pointer-events-none" style={{ left: `${j.pct}%` }} />
                         ))}
                       </div>
-                      {/* Légende axe temps */}
-                      <div className="relative h-5">
-                        <span className={`absolute left-0 text-[10px] ${T.textFaint}`}>Aujourd'hui</span>
-                        {pctPend > 0 && pctPend < 95 && (
-                          <span className={`absolute text-[10px] font-bold text-emerald-400`} style={{ left: `${pctPend}%`, transform: 'translateX(-50%)' }}>
-                            an {dureeAnnees}
-                          </span>
-                        )}
-                        {!jamaisRevendre && (
-                          <span className={`absolute right-0 text-[10px] ${T.textFaint}`}>an {dureeDetentionAnnees}</span>
-                        )}
-                        {jamaisRevendre && (
-                          <span className={`absolute right-0 text-[10px] ${T.textFaint}`}>Retraite (an 25)</span>
-                        )}
-                        {/* Jalon fin prêt */}
-                        {milestones.map((m, i) => (
-                          <span key={i} className={`absolute text-[10px] font-bold ${m.color}`} style={{ left: `${m.pct}%`, transform: 'translateX(-50%)' }}>
-                            {m.label} (an {dureeEmpruntAnnees})
-                          </span>
-                        ))}
+                      {/* Axe labels */}
+                      <div className="relative h-8">
+                        {jalons.map((j, i) => {
+                          const style = j.align === 'left'
+                            ? { left: 0 }
+                            : j.align === 'right'
+                            ? { right: 0 }
+                            : { left: `${j.pct}%`, transform: 'translateX(-50%)' };
+                          return (
+                            <div key={i} className={`absolute text-center ${j.color}`} style={style}>
+                              <p className="text-[11px] font-black leading-none">{j.label}</p>
+                              <p className="text-[9px] font-medium leading-none mt-0.5 opacity-75">{j.sub}</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1526,7 +1578,7 @@ export default function App() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 2 — Location</p>
                     <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
                    {dureeLocation > 0
-                        ? `Pendant ${dureeDetentionAnnees === 0 ? Math.max(0, 25 - dureeAnnees) : dureeLocation} an${(dureeDetentionAnnees === 0 ? Math.max(0, 25 - dureeAnnees) : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ' (jusqu\'à la retraite dans 25 ans)' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
+                        ? `Pendant ${dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} an${(dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ' (jusqu\'au décès dans 40 ans)' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
                         : `Aucune période de location avec les paramètres actuels (revente = fin de pendularité).`}
                     </p>
                     {dureeLocation > 0 && <div className="space-y-2">
@@ -1535,7 +1587,7 @@ export default function App() {
                         <span className={`font-black text-emerald-400`}>{formatEuroExact(loyerMoyenMensuel * ratioAchat)} / mois</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? Math.max(0, 25 - dureeAnnees) : dureeLocation} ans{dureeDetentionAnnees === 0 ? ' (jusqu\'à 25 ans)' : ''}</span>
+                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} ans{dureeDetentionAnnees === 0 ? ' (jusqu\'au décès dans 40 ans)' : ''}</span>
                         <span className={`font-black text-emerald-400`}>{formatEuro(achat.revenusLocatifsNets)}</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>

@@ -333,7 +333,8 @@ export default function App() {
   // Petits montants (mensualités, prix unitaires) → toujours en € entier
   const formatEuroExact = (amount) => `${fmt.format(Math.round(amount))} €`;
 
-  const [activeIds, setActiveIds] = useState(() => new Set(scenarios.map(s => s.id)));
+  const [activeIds, setActiveIds] = useLocalStorage('activeFilters', scenarios.map(s => s.id));
+  const activeSet = new Set(activeIds);
   const [chartOpen, setChartOpen] = useLocalStorage('accordionChart', true);
   const [detailOpen, setDetailOpen] = useLocalStorage('accordionDetail', true);
   const [annuelOpen, setAnnuelOpen] = useLocalStorage('accordionAnnuel', true);
@@ -341,14 +342,13 @@ export default function App() {
   const [semaineOpen, setSemaineOpen] = useLocalStorage('accordionSemaine', true);
   const toggleScenario = (id) => {
     setActiveIds(prev => {
-      if (prev.size === 1 && prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+      const prevArr = Array.isArray(prev) ? prev : Array.from(prev);
+      if (prevArr.length === 1 && prevArr.includes(id)) return prevArr;
+      return prevArr.includes(id) ? prevArr.filter(x => x !== id) : [...prevArr, id];
     });
   };
 
-  const visibleScenarios = scenarios.filter(s => s.available && activeIds.has(s.id));
+  const visibleScenarios = scenarios.filter(s => s.available && activeSet.has(s.id));
   const maxVal = Math.max(...visibleScenarios.map(s => s.tresorerie));
   const best = visibleScenarios.reduce((a, b) => a.coutNet < b.coutNet ? a : b);
 
@@ -370,7 +370,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             {scenarios.map(s => {
               const c = SCENARIO_COLORS[s.id];
-              const isActive = activeIds.has(s.id);
+              const isActive = activeSet.has(s.id);
               const isBest = isActive && s.available && s.id === best.id;
               if (!s.available) return null;
               return (

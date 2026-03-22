@@ -422,7 +422,7 @@ export default function App() {
     const fraisReventeTotal = jamaisRevendre ? 0 : (fraisAgenceMontant + impotPlusValue + fraisDiagnostics + travauxRevente) * ratioAchat;
 
     // Revenus locatifs sur la période entre fin de pendularité et revente (ou indéfinie si jamais revendre)
-    const dureeLocationAnnees = jamaisRevendre ? dureeAnnees : Math.max(0, dureeDetentionAnnees - dureeAnnees);
+    const dureeLocationAnnees = jamaisRevendre ? Math.max(0, 40 - dureeAnnees) : Math.max(0, dureeDetentionAnnees - dureeAnnees);
     // Loyer brut annuel avec taux d'occupation et inflation, à partir de l'année dureeAnnees
     let revenusBrutsTotal = 0;
     let assurancePNOTotal = 0;
@@ -700,7 +700,7 @@ export default function App() {
               <SubGroup label="Mise en location" color="teal" T={T} />
               <p className={`text-[10px] -mt-2 ${T.textFaint}`}>
                 {dureeDetentionAnnees === 0
-                  ? `Location indéfinie après la fin de pendularité (${dureeAnnees} ans) — pas de revente prévue.`
+                  ? `Location indéfinie après la fin de pendularité (${dureeAnnees} ans) — pas de revente prévue, on simule ${Math.max(0, 40 - dureeAnnees)} ans de location (jusqu'à 40 ans de détention).`
                   : dureeDetentionAnnees > dureeAnnees
                     ? `Entre la fin de pendularité (${dureeAnnees} ans) et la revente (${dureeDetentionAnnees} ans) — ${dureeDetentionAnnees - dureeAnnees} an${dureeDetentionAnnees - dureeAnnees > 1 ? 's' : ''} de location.`
                     : `Aucune période de location (revente ≤ fin de pendularité).`}
@@ -1436,7 +1436,7 @@ export default function App() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">Phase 2 — Location</p>
                     <p className={`text-xs leading-relaxed mb-3 ${T.textSecondary}`}>
                    {dureeLocation > 0
-                        ? `Pendant ${dureeDetentionAnnees === 0 ? dureeAnnees : dureeLocation} an${(dureeDetentionAnnees === 0 ? dureeAnnees : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ' (durée de simulation)' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
+                        ? `Pendant ${dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} an${(dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation) > 1 ? 's' : ''}${dureeDetentionAnnees === 0 ? ' (jusqu\'à 40 ans de détention)' : ''}, le bien est loué. Le locataire rembourse l'emprunt à ta place, et tu perçois un revenu net après impôt.`
                         : `Aucune période de location avec les paramètres actuels (revente = fin de pendularité).`}
                     </p>
                     {dureeLocation > 0 && <div className="space-y-2">
@@ -1445,7 +1445,7 @@ export default function App() {
                         <span className={`font-black text-emerald-400`}>{formatEuroExact(loyerMoyenMensuel * ratioAchat)} / mois</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>
-                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? dureeAnnees : dureeLocation} ans{dureeDetentionAnnees === 0 ? ' (simulation)' : ''}</span>
+                         <span className={T.textFaint}>Revenus locatifs nets sur {dureeDetentionAnnees === 0 ? Math.max(0, 40 - dureeAnnees) : dureeLocation} ans{dureeDetentionAnnees === 0 ? ' (jusqu\'à 40 ans)' : ''}</span>
                         <span className={`font-black text-emerald-400`}>{formatEuro(achat.revenusLocatifsNets)}</span>
                       </div>
                       <div className={`flex justify-between items-center text-xs rounded-lg px-3 py-2 ${T.rowAlt}`}>

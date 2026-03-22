@@ -20,10 +20,38 @@ function useLocalStorage(key, defaultValue) {
   return [value, setStored];
 }
 
-function Field({ label, children, T }) {
+function Tooltip({ text, T }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        type="button"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        onFocus={() => setVisible(true)}
+        onBlur={() => setVisible(false)}
+        onClick={() => setVisible(v => !v)}
+        className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 transition ${T.isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {visible && (
+        <span className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-lg px-3 py-2 text-[11px] leading-relaxed shadow-xl pointer-events-none ${T.isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-white text-slate-700 border border-slate-200'}`}>
+          {text}
+          <span className={`absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent ${T.isDark ? 'border-t-slate-700' : 'border-t-white'}`} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function Field({ label, tooltip, children, T }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className={`text-[10px] font-bold uppercase tracking-widest ${T.label}`}>{label}</label>
+      <label className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest ${T.label}`}>
+        {label}
+        {tooltip && <Tooltip text={tooltip} T={T} />}
+      </label>
       {children}
     </div>
   );
@@ -612,7 +640,7 @@ export default function App() {
                 <Field label="Loyer" T={T}><Input value={loyerMensuel} onChange={e => setLoyerMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
                 <Field label="Repas" T={T}><Input value={budgetRepasAppartJour} onChange={e => setBudgetRepasAppartJour(Number(e.target.value))} suffix="€/j" T={T} /></Field>
                 <Field label="Élec / Web / Assur" T={T}><Input value={chargesAnnexesLocationMensuelles} onChange={e => setChargesAnnexesLocationMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
-                <Field label="Taxe Hab / Fonc" T={T}><Input value={taxeHabitationLocationAnnuelle} onChange={e => setTaxeHabitationLocationAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Taxe Hab / Fonc" tooltip="Taxe d'habitation (si applicable) et taxe foncière annuelle sur le logement parisien." T={T}><Input value={taxeHabitationLocationAnnuelle} onChange={e => setTaxeHabitationLocationAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
                 <Field label="Frais installation" T={T}><Input value={fraisInstallation} onChange={e => setFraisInstallation(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
             </SectionCard>
@@ -627,9 +655,9 @@ export default function App() {
                 <Field label="Durée prêt" T={T}>
                   <Select value={dureeEmpruntAnnees} onChange={e => setDureeEmpruntAnnees(Number(e.target.value))} options={[5,7,10,12,15,20,25,30].map(v => ({ value: v, label: `${v} ans` }))} T={T} />
                 </Field>
-                <Field label="Charges co-pro" T={T}><Input value={chargesAnnuellesAchat} onChange={e => setChargesAnnuellesAchat(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Charges co-pro" tooltip="Charges de copropriété annuelles : entretien des parties communes, gardien, syndic, travaux votés en AG." T={T}><Input value={chargesAnnuellesAchat} onChange={e => setChargesAnnuellesAchat(Number(e.target.value))} suffix="€/an" T={T} /></Field>
                 <Field label="Élec / Web / Assur" T={T}><Input value={chargesAnnexesAchatMensuelles} onChange={e => setChargesAnnexesAchatMensuelles(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
-                <Field label="Taxe Hab / Fonc" T={T}><Input value={taxeHabitationAchatAnnuelle} onChange={e => setTaxeHabitationAchatAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
+                <Field label="Taxe Hab / Fonc" tooltip="Taxe d'habitation (si applicable) et taxe foncière annuelle sur le bien acheté." T={T}><Input value={taxeHabitationAchatAnnuelle} onChange={e => setTaxeHabitationAchatAnnuelle(Number(e.target.value))} suffix="€/an" T={T} /></Field>
                 <Field label="Travaux à l'achat" T={T}><Input value={travauxAchat} onChange={e => setTravauxAchat(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
               <SubGroup label="Mise en location" color="teal" T={T} />
@@ -640,9 +668,9 @@ export default function App() {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Loyer perçu" T={T}><Input value={loyerPercuMensuel} onChange={e => setLoyerPercuMensuel(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
-                <Field label="Assurance PNO" T={T}><Input value={assurancePNOMensuelle} onChange={e => setAssurancePNOMensuelle(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
-                <Field label="Frais gestion" T={T}><Input step="0.5" value={fraisGestionLocative} onChange={e => setFraisGestionLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
-                <Field label="Vacance locative" T={T}><Input step="1" value={vacanceLocative} onChange={e => setVacanceLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Assurance PNO" tooltip="Assurance Propriétaire Non Occupant : obligatoire en copropriété, elle couvre les dommages causés au bien ou aux tiers quand le logement est vide ou loué." T={T}><Input value={assurancePNOMensuelle} onChange={e => setAssurancePNOMensuelle(Number(e.target.value))} suffix="€/mois" T={T} /></Field>
+                <Field label="Frais gestion" tooltip="Commission prélevée par une agence pour gérer la location à ta place : recherche de locataires, encaissement des loyers, gestion des problèmes. Mettre 0% si tu gères toi-même." T={T}><Input step="0.5" value={fraisGestionLocative} onChange={e => setFraisGestionLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
+                <Field label="Vacance locative" tooltip="Pourcentage du temps annuel où le bien est inoccupé entre deux locataires. Réduit le loyer effectivement perçu. Typiquement 2-5% pour Paris." T={T}><Input step="1" value={vacanceLocative} onChange={e => setVacanceLocative(Number(e.target.value))} suffix="%" T={T} /></Field>
               </div>
               <SubGroup label="Revente" color="emerald" T={T} />
               <div className="grid grid-cols-2 gap-3">
@@ -651,7 +679,7 @@ export default function App() {
                 </Field>
                 <Field label="Plus-value / an" T={T}><Input step="0.1" value={plusValueAnnuelle} onChange={e => setPlusValueAnnuelle(Number(e.target.value))} suffix="%/an" T={T} /></Field>
                 <Field label="Frais agence" T={T}><Input step="0.5" value={fraisAgenceRevente} onChange={e => setFraisAgenceRevente(Number(e.target.value))} suffix="%" T={T} /></Field>
-                <Field label="Diagnostics" T={T}><Input value={fraisDiagnostics} onChange={e => setFraisDiagnostics(Number(e.target.value))} suffix="€" T={T} /></Field>
+                <Field label="Diagnostics" tooltip="Diagnostics immobiliers obligatoires à la vente : DPE, amiante, électricité, gaz, etc. Comptez 500-1 500 € selon la surface et l'ancienneté du bien." T={T}><Input value={fraisDiagnostics} onChange={e => setFraisDiagnostics(Number(e.target.value))} suffix="€" T={T} /></Field>
                 <Field label="Travaux avant revente" T={T}><Input value={travauxRevente} onChange={e => setTravauxRevente(Number(e.target.value))} suffix="€" T={T} /></Field>
               </div>
             </SectionCard>
@@ -664,7 +692,7 @@ export default function App() {
               <p className={`text-[10px] -mt-2 ${T.textFaint}`}>Calcul de l'économie d'impôt si tu optes pour les frais réels plutôt que l'abattement forfaitaire 10%.</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Salaire brut" T={T}><Input value={salaireBrutAnnuel} onChange={e => setSalaireBrutAnnuel(Number(e.target.value))} suffix="€/an" T={T} /></Field>
-                <Field label="TMI" T={T}>
+                <Field label="TMI" tooltip="Taux Marginal d'Imposition : le taux auquel est imposé le dernier euro de tes revenus. Tranches 2024 : 0%, 11%, 30%, 41%, 45%. Utilisé pour calculer l'impôt sur les revenus locatifs et l'économie liée aux frais réels." T={T}>
                   <Select value={tmi} onChange={e => setTmi(Number(e.target.value))} options={[0, 11, 30, 41, 45].map(v => ({ value: v, label: `${v} %` }))} T={T} />
                 </Field>
               </div>
